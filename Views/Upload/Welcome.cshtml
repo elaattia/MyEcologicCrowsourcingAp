@@ -1,0 +1,641 @@
+@{
+    ViewData["Title"] = "Signaler un Déchet";
+}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        h1 { color: #333; margin-bottom: 10px; font-size: 28px; }
+        .subtitle { color: #666; margin-bottom: 30px; font-size: 14px; }
+        .gps-section { background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px; }
+        .gps-info { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .gps-status { font-size: 14px; color: #666; }
+        .gps-status.active { color: #28a745; font-weight: 600; }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5568d3; transform: translateY(-2px); }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
+        .manual-coords { display: none; margin-top: 15px; }
+        .manual-coords.active { display: block; }
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #333; font-weight: 600; font-size: 14px; }
+        input[type="number"], input[type="file"] { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: border 0.3s; }
+        input:focus { outline: none; border-color: #667eea; }
+        .photo-section { background: #f8f9fa; border: 2px dashed #ccc; border-radius: 12px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 20px; }
+        .photo-section:hover { border-color: #667eea; background: #e8eaf6; }
+        .photo-preview { max-width: 100%; max-height: 300px; border-radius: 8px; margin-top: 15px; display: none; }
+        .photo-preview.active { display: block; }
+        .btn-submit { width: 100%; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.3s; }
+        .btn-submit:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4); }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .alert { padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+        .alert-success { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+        .alert-error { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border-left: 4px solid #17a2b8; }
+        .loading { display: none; text-align: center; margin-top: 10px; }
+        .loading.active { display: block; }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* === CAMERA MODAL - CORRIGÉ === */
+        #cameraModal { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            height: 100vh; 
+            background: #1a1a1a; 
+            z-index: 999999;
+            overflow: auto;
+        }
+        #cameraModal.active { display: block !important; }
+        .camera-container {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            gap: 20px;
+        }
+        #cameraDisplay {
+            width: 90vw;
+            max-width: 800px;
+            height: auto;
+            border: 3px solid #667eea;
+            border-radius: 12px;
+            background: #000;
+            display: block;
+        }
+        #cameraPreview {
+            width: 90vw;
+            max-width: 800px;
+            height: auto;
+            aspect-ratio: 16/9;
+            border: 3px solid #667eea;
+            border-radius: 12px;
+            background: #000;
+            object-fit: cover;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        #cameraPreview::before,
+        #cameraPreview::after,
+        .camera-container::before,
+        .camera-container::after {
+            display: none !important;
+            content: none !important;
+        }
+        #cameraCanvas { display: none; }
+        .camera-controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .camera-status {
+            color: white;
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 8px;
+            min-width: 250px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 Signaler un Déchet</h1>
+        <p class="subtitle">Aidez à garder notre environnement propre</p>
+
+        <div id="alertContainer"></div>
+
+        <form id="signalerForm" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            
+            <div class="gps-section">
+                <div class="gps-info">
+                    <span style="font-size: 24px;">📍</span>
+                    <div>
+                        <strong>Localisation</strong>
+                        <div class="gps-status" id="gpsStatus">Cliquez sur "GPS Automatique" pour obtenir votre position</div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-secondary" id="btnAutoGPS">📡 GPS Automatique</button>
+                    <button type="button" class="btn btn-secondary" id="btnManualGPS">✍️ Saisie Manuelle</button>
+                </div>
+
+                <div class="manual-coords" id="manualCoords">
+                    <div class="input-row">
+                        <div>
+                            <label>Latitude</label>
+                            <input type="number" id="manualLat" step="0.000001" min="-90" max="90" placeholder="36.8065">
+                        </div>
+                        <div>
+                            <label>Longitude</label>
+                            <input type="number" id="manualLon" step="0.000001" min="-180" max="180" placeholder="10.1815">
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" id="latitude" name="latitude">
+                <input type="hidden" id="longitude" name="longitude">
+            </div>
+
+            <div class="form-group">
+                <label>Photo du Déchet</label>
+                <div class="photo-section" id="photoSection">
+                    <div id="photoPlaceholder">
+                        <span style="font-size: 48px;">📷</span>
+                        <p style="margin-top: 10px;">Cliquez pour prendre une photo ou uploader</p>
+                        <p style="font-size: 12px; color: #999;">JPG, PNG, WEBP (Max 5MB)</p>
+                    </div>
+                    <img id="photoPreview" class="photo-preview" alt="Aperçu">
+                </div>
+                <input type="file" id="imageInput" name="image" accept="image/*" required style="display: none;">
+                <button type="button" class="btn btn-secondary" id="btnUpload" style="width: 100%; margin-top: 10px;">📁 Choisir un Fichier</button>
+                <button type="button" class="btn btn-primary" id="btnCamera" style="width: 100%; margin-top: 10px;">📸 Prendre une Photo</button>
+            </div>
+
+            <div class="alert alert-info">
+                ℹ️ <strong>Note:</strong> Le type de déchet et le volume seront analysés automatiquement par notre système IA.
+            </div>
+
+            <button type="submit" class="btn-submit" id="btnSubmit">✅ SIGNALER LE DÉCHET</button>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px;">Envoi en cours...</p>
+            </div>
+        </form>
+    </div>
+
+    <!-- === MODAL CAMÉRA - VERSION CANVAS === -->
+<div id="cameraModal">
+    <div class="camera-container">
+        <!--<canvas id="cameraDisplay" width="1280" height="720"></canvas>-->
+        <video id="cameraPreview" autoplay playsinline muted webkit-playsinline disablePictureInPicture style="display:none;"></video>
+        <canvas id="cameraCanvas" style="display: none;"></canvas>
+        <div class="camera-controls">
+            <button type="button" class="btn btn-primary" id="btnCapture" style="font-size: 18px; padding: 15px 30px;">📷 Capturer</button>
+            <button type="button" class="btn btn-secondary" id="btnCloseCamera" style="font-size: 18px; padding: 15px 30px;">❌ Fermer</button>
+        </div>
+        <div class="camera-status" id="cameraStatus"></div>
+    </div>
+</div>
+
+    <script>
+        let gpsMode = null;
+        let currentLat = null;
+        let currentLon = null;
+        let stream = null;
+
+        // Réinitialiser au chargement
+        window.addEventListener('load', () => {
+            resetForm();
+            console.log('=== DÉBOGAGE TOKEN ===');
+            console.log('Token JwtToken:', getCookie('JwtToken'));
+            console.log('Token localStorage:', localStorage.getItem('token'));
+        });
+
+        function resetForm() {
+            currentLat = null;
+            currentLon = null;
+            document.getElementById('latitude').value = '';
+            document.getElementById('longitude').value = '';
+            document.getElementById('manualLat').value = '';
+            document.getElementById('manualLon').value = '';
+            gpsMode = null;
+            document.getElementById('manualCoords').classList.remove('active');
+            document.getElementById('btnAutoGPS').classList.remove('btn-primary');
+            document.getElementById('btnAutoGPS').classList.add('btn-secondary');
+            document.getElementById('btnManualGPS').classList.remove('btn-primary');
+            document.getElementById('btnManualGPS').classList.add('btn-secondary');
+            document.getElementById('gpsStatus').textContent = 'Cliquez sur "GPS Automatique" pour obtenir votre position';
+            document.getElementById('gpsStatus').className = 'gps-status';
+            document.getElementById('imageInput').value = '';
+            document.getElementById('photoPreview').classList.remove('active');
+            document.getElementById('photoPreview').src = '';
+            document.getElementById('photoPlaceholder').style.display = 'block';
+        }
+
+        // === GPS AUTOMATIQUE ===
+        document.getElementById('btnAutoGPS').addEventListener('click', () => {
+            gpsMode = 'auto';
+            document.getElementById('manualCoords').classList.remove('active');
+            document.getElementById('btnAutoGPS').classList.add('btn-primary');
+            document.getElementById('btnAutoGPS').classList.remove('btn-secondary');
+            document.getElementById('btnManualGPS').classList.add('btn-secondary');
+            document.getElementById('btnManualGPS').classList.remove('btn-primary');
+            document.getElementById('manualLat').value = '';
+            document.getElementById('manualLon').value = '';
+            getGPSLocation();
+        });
+
+        // === GPS MANUEL ===
+        document.getElementById('btnManualGPS').addEventListener('click', () => {
+            gpsMode = 'manual';
+            document.getElementById('manualCoords').classList.add('active');
+            document.getElementById('btnManualGPS').classList.add('btn-primary');
+            document.getElementById('btnManualGPS').classList.remove('btn-secondary');
+            document.getElementById('btnAutoGPS').classList.add('btn-secondary');
+            document.getElementById('btnAutoGPS').classList.remove('btn-primary');
+            currentLat = null;
+            currentLon = null;
+            document.getElementById('latitude').value = '';
+            document.getElementById('longitude').value = '';
+            document.getElementById('gpsStatus').textContent = 'Mode manuel activé - Saisissez les coordonnées';
+            document.getElementById('gpsStatus').className = 'gps-status active';
+        });
+
+        function getGPSLocation() {
+            if (!navigator.geolocation) {
+                showAlert('Votre navigateur ne supporte pas la géolocalisation', 'error');
+                return;
+            }
+
+            document.getElementById('gpsStatus').textContent = 'Localisation en cours...';
+            document.getElementById('gpsStatus').className = 'gps-status';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    currentLat = position.coords.latitude;
+                    currentLon = position.coords.longitude;
+                    document.getElementById('latitude').value = currentLat;
+                    document.getElementById('longitude').value = currentLon;
+                    document.getElementById('gpsStatus').textContent = `✅ Position obtenue: ${currentLat.toFixed(6)}, ${currentLon.toFixed(6)} (±${position.coords.accuracy.toFixed(0)}m)`;
+                    document.getElementById('gpsStatus').className = 'gps-status active';
+                },
+                (error) => {
+                    let message = 'Erreur de localisation';
+                    if (error.code === 1) message = '❌ Permission refusée. Activez la localisation dans votre navigateur.';
+                    if (error.code === 2) message = '❌ Position indisponible. Vérifiez votre connexion GPS.';
+                    if (error.code === 3) message = '❌ Délai de localisation dépassé.';
+                    showAlert(message, 'error');
+                    document.getElementById('gpsStatus').textContent = message;
+                    document.getElementById('gpsStatus').className = 'gps-status';
+                    currentLat = null;
+                    currentLon = null;
+                    document.getElementById('latitude').value = '';
+                    document.getElementById('longitude').value = '';
+                },
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            );
+        }
+
+        // === UPLOAD FICHIER ===
+        document.getElementById('imageInput').addEventListener('change', handleImageSelect);
+        document.getElementById('photoSection').addEventListener('click', () => {
+            document.getElementById('imageInput').click();
+        });
+        document.getElementById('btnUpload').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('imageInput').click();
+        });
+
+        function handleImageSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+                showAlert('L\'image ne doit pas dépasser 5MB', 'error');
+                e.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('photoPreview').src = e.target.result;
+                document.getElementById('photoPreview').classList.add('active');
+                document.getElementById('photoPlaceholder').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // === CAMÉRA - VERSION CORRIGÉE ===
+        document.getElementById('btnCamera').addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            const modal = document.getElementById('cameraModal');
+            const video = document.getElementById('cameraPreview');
+            const status = document.getElementById('cameraStatus');
+            
+            try {
+                status.textContent = '📹 Démarrage de la caméra...';
+                modal.classList.add('active');
+                
+                console.log('Demande accès caméra...');
+                
+                // Contraintes optimisées
+                const constraints = {
+                    video: {
+                        facingMode: { ideal: 'environment' }, // Caméra arrière
+                        width: { ideal: 1920, max: 3840 },
+                        height: { ideal: 1080, max: 2160 }
+                    },
+                    audio: false
+                };
+                
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('Stream obtenu:', stream);
+                console.log('Tracks:', stream.getTracks());
+                
+                // CRITIQUE: Attendre que le stream soit complètement prêt
+                const videoTrack = stream.getVideoTracks()[0];
+                console.log('Video track settings:', videoTrack.getSettings());
+                
+                video.srcObject = stream;
+
+                
+                
+                // IMPORTANT: Attendre loadeddata au lieu de loadedmetadata
+                video.onloadeddata = () => {
+                    console.log('loadeddata event - Résolution:', video.videoWidth, 'x', video.videoHeight);
+                    
+                    video.play()
+                        .then(() => {
+                            status.textContent = '✅ Caméra prête - Cadrez votre photo (Résolution: ' + video.videoWidth + 'x' + video.videoHeight + ')';
+                            console.log('Vidéo en lecture');
+                            
+                            // SOLUTION CANVAS: Dessiner le flux en temps réel
+                            const displayCanvas = document.getElementById('cameraDisplay');
+                            
+                            if (displayCanvas) {
+                                const displayCtx = displayCanvas.getContext('2d');
+                                
+                                displayCanvas.width = video.videoWidth;
+                                displayCanvas.height = video.videoHeight;
+                                
+                                let animationId;
+                                function drawFrame() {
+                                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                                        displayCtx.drawImage(video, 0, 0, displayCanvas.width, displayCanvas.height);
+                                    }
+                                    animationId = requestAnimationFrame(drawFrame);
+                                }
+                                drawFrame();
+                                
+                                // Sauvegarder l'ID pour l'arrêter plus tard
+                                window.cameraAnimationId = animationId;
+                                console.log('Canvas animation démarrée');
+                            } else {
+                                console.error('Element cameraDisplay introuvable!');
+                            }
+                            
+                            // Test frame après 1 seconde
+                            setTimeout(() => {
+                                const testCanvas = document.createElement('canvas');
+                                testCanvas.width = video.videoWidth;
+                                testCanvas.height = video.videoHeight;
+                                const testCtx = testCanvas.getContext('2d');
+                                testCtx.drawImage(video, 0, 0);
+                                const imageData = testCtx.getImageData(0, 0, 10, 10);
+                                const hasColor = imageData.data.some(val => val > 0);
+                                console.log('Test frame - Contient des pixels:', hasColor);
+                                if (!hasColor) {
+                                    console.error('⚠️ WARNING: Video affiche des frames noires!');
+                                    status.textContent = '⚠️ Problème de rendu vidéo détecté';
+                                }
+                            }, 1000);
+                        })
+                        .catch(err => {
+                            console.error('Erreur play:', err);
+                            status.textContent = '⚠️ Erreur lecture vidéo: ' + err.message;
+                        });
+                };
+                
+                // Fallback si loadeddata ne se déclenche pas
+                video.onloadedmetadata = () => {
+                    console.log('loadedmetadata event - Résolution:', video.videoWidth, 'x', video.videoHeight);
+                };
+                
+            } catch (error) {
+                console.error('Erreur caméra complète:', error);
+                status.textContent = '❌ Erreur: ' + error.message;
+                showAlert('Impossible d\'accéser à la caméra: ' + error.message, 'error');
+                setTimeout(() => closeCameraModal(), 2000);
+            }
+        });
+
+        document.getElementById('btnCapture').addEventListener('click', () => {
+            const video = document.getElementById('cameraPreview');
+            const canvas = document.getElementById('cameraCanvas');
+            const context = canvas.getContext('2d');
+            
+            if (!video.videoWidth || !video.videoHeight) {
+                showAlert('⚠️ Attendez que la caméra soit prête', 'error');
+                return;
+            }
+            
+            console.log('Capture - Dimensions:', video.videoWidth, 'x', video.videoHeight);
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            canvas.toBlob((blob) => {
+                const timestamp = new Date().getTime();
+                const file = new File([blob], `camera-${timestamp}.jpg`, { type: 'image/jpeg' });
+                
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                document.getElementById('imageInput').files = dataTransfer.files;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('photoPreview').src = e.target.result;
+                    document.getElementById('photoPreview').classList.add('active');
+                    document.getElementById('photoPlaceholder').style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+                
+                closeCameraModal();
+                showAlert('✅ Photo capturée avec succès!', 'success');
+                console.log('Photo capturée:', file.name, file.size, 'bytes');
+            }, 'image/jpeg', 0.92);
+        });
+
+        document.getElementById('btnCloseCamera').addEventListener('click', () => {
+            closeCameraModal();
+        });
+
+        function closeCameraModal() {
+            const modal = document.getElementById('cameraModal');
+            const video = document.getElementById('cameraPreview');
+            
+            // Arrêter l'animation canvas
+            if (window.cameraAnimationId) {
+                cancelAnimationFrame(window.cameraAnimationId);
+                window.cameraAnimationId = null;
+            }
+            
+            if (stream) {
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                    console.log('Track arrêté:', track.kind);
+                });
+                stream = null;
+            }
+            
+            video.srcObject = null;
+            modal.classList.remove('active');
+            document.getElementById('cameraStatus').textContent = '';
+            console.log('Modal caméra fermée');
+        }
+
+        // === SOUMISSION FORMULAIRE ===
+        document.getElementById('signalerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            console.log('Formulaire soumis');
+
+            let lat, lon;
+            
+            if (!gpsMode) {
+                showAlert('Veuillez sélectionner un mode de localisation (GPS Automatique ou Saisie Manuelle)', 'error');
+                return;
+            }
+
+            if (gpsMode === 'auto') {
+                lat = document.getElementById('latitude').value;
+                lon = document.getElementById('longitude').value;
+                if (!lat || !lon) {
+                    showAlert('Veuillez d\'abord obtenir votre position GPS en cliquant sur "GPS Automatique"', 'error');
+                    return;
+                }
+            } else {
+                lat = document.getElementById('manualLat').value;
+                lon = document.getElementById('manualLon').value;
+                if (!lat || !lon) {
+                    showAlert('Veuillez saisir la latitude et la longitude', 'error');
+                    return;
+                }
+                if (lat < -90 || lat > 90) {
+                    showAlert('La latitude doit être entre -90 et 90', 'error');
+                    return;
+                }
+                if (lon < -180 || lon > 180) {
+                    showAlert('La longitude doit être entre -180 et 180', 'error');
+                    return;
+                }
+                document.getElementById('latitude').value = lat;
+                document.getElementById('longitude').value = lon;
+            }
+
+            const imageFile = document.getElementById('imageInput').files[0];
+            if (!imageFile) {
+                showAlert('Veuillez sélectionner une photo', 'error');
+                return;
+            }
+
+            console.log('Validation OK - Latitude:', lat, 'Longitude:', lon);
+
+            const latNum = parseFloat(lat);
+            const lonNum = parseFloat(lon);
+
+            const formData = new FormData();
+            formData.append('image', imageFile);
+            formData.append('latitude', latNum.toString());
+            formData.append('longitude', lonNum.toString());
+
+            document.getElementById('btnSubmit').disabled = true;
+            document.getElementById('loading').classList.add('active');
+
+            try {
+                let jwtToken = getCookie('JwtToken') || 
+                               getCookie('jwtToken') || 
+                               getCookie('jwt') ||
+                               localStorage.getItem('JwtToken') ||
+                               localStorage.getItem('token') ||
+                               localStorage.getItem('jwt') ||
+                               sessionStorage.getItem('JwtToken') ||
+                               sessionStorage.getItem('token');
+                
+                console.log('Token JWT:', jwtToken ? 'Présent (' + jwtToken.substring(0, 20) + '...)' : 'Absent');
+                
+                if (!jwtToken || jwtToken === 'null') {
+                    showAlert('❌ Vous devez être connecté pour signaler un déchet. Aucun token trouvé.', 'error');
+                    document.getElementById('btnSubmit').disabled = false;
+                    document.getElementById('loading').classList.remove('active');
+                    return;
+                }
+                
+                console.log('Envoi de la requête à /api/pointdechet/signaler');
+                
+                const response = await fetch('/api/pointdechet/signaler', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    },
+                    body: formData
+                });
+
+                console.log('Réponse reçue - Status:', response.status);
+
+                const contentType = response.headers.get('content-type');
+                let data;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                    console.log('Données reçues:', data);
+                } else {
+                    const text = await response.text();
+                    console.log('Réponse non-JSON:', text);
+                    data = { message: 'Erreur serveur: réponse invalide' };
+                }
+
+                if (response.ok) {
+                    showAlert('✅ Déchet signalé avec succès! ' + (data.message || ''), 'success');
+                    setTimeout(() => {
+                        resetForm();
+                        window.location.href = '/Upload/Index';
+                    }, 2000);
+                } else if (response.status === 401) {
+                    showAlert('⛔ Session expirée ou token invalide. Veuillez vous reconnecter.', 'error');
+                } else {
+                    showAlert(data.message || 'Erreur lors du signalement (Status: ' + response.status + ')', 'error');
+                }
+            } catch (error) {
+                console.error('Erreur complète:', error);
+                showAlert('Erreur réseau: ' + error.message, 'error');
+            } finally {
+                document.getElementById('btnSubmit').disabled = false;
+                document.getElementById('loading').classList.remove('active');
+            }
+        });
+
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            document.getElementById('alertContainer').innerHTML = '';
+            document.getElementById('alertContainer').appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+    </script>
+</body>
+</html>

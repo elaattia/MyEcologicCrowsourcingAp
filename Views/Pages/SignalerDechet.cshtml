@@ -1,0 +1,284 @@
+@{
+    ViewData["Title"] = "Signaler un Déchet";
+}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        h1 { color: #333; margin-bottom: 10px; font-size: 28px; }
+        .subtitle { color: #666; margin-bottom: 30px; font-size: 14px; }
+        .gps-section { background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px; }
+        .gps-info { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .gps-status { font-size: 14px; color: #666; }
+        .gps-status.active { color: #28a745; font-weight: 600; }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5568d3; transform: translateY(-2px); }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
+        .manual-coords { display: none; margin-top: 15px; }
+        .manual-coords.active { display: block; }
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #333; font-weight: 600; font-size: 14px; }
+        input[type="number"], input[type="file"] { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: border 0.3s; }
+        input:focus { outline: none; border-color: #667eea; }
+        .photo-section { background: #f8f9fa; border: 2px dashed #ccc; border-radius: 12px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 20px; }
+        .photo-section:hover { border-color: #667eea; background: #e8eaf6; }
+        .photo-preview { max-width: 100%; max-height: 300px; border-radius: 8px; margin-top: 15px; display: none; }
+        .photo-preview.active { display: block; }
+        #cameraCapture { display: none; }
+        .btn-submit { width: 100%; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.3s; }
+        .btn-submit:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4); }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .alert { padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+        .alert-success { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+        .alert-error { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border-left: 4px solid #17a2b8; }
+        .loading { display: none; text-align: center; margin-top: 10px; }
+        .loading.active { display: block; }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 Signaler un Déchet</h1>
+        <p class="subtitle">Aidez à garder notre environnement propre</p>
+
+        <div id="alertContainer"></div>
+
+        <form id="signalerForm" enctype="multipart/form-data">
+            
+            <div class="gps-section">
+                <div class="gps-info">
+                    <span style="font-size: 24px;">📍</span>
+                    <div>
+                        <strong>Localisation</strong>
+                        <div class="gps-status" id="gpsStatus">En attente...</div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary" id="btnAutoGPS">📡 GPS Automatique</button>
+                    <button type="button" class="btn btn-secondary" id="btnManualGPS">✍️ Saisie Manuelle</button>
+                </div>
+
+                <div class="manual-coords" id="manualCoords">
+                    <div class="input-row">
+                        <div>
+                            <label>Latitude</label>
+                            <input type="number" id="manualLat" step="0.000001" min="-90" max="90" placeholder="36.8065">
+                        </div>
+                        <div>
+                            <label>Longitude</label>
+                            <input type="number" id="manualLon" step="0.000001" min="-180" max="180" placeholder="10.1815">
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" id="latitude" name="latitude">
+                <input type="hidden" id="longitude" name="longitude">
+            </div>
+
+            <div class="form-group">
+                <label>Photo du Déchet</label>
+                <div class="photo-section" id="photoSection">
+                    <div id="photoPlaceholder">
+                        <span style="font-size: 48px;">📷</span>
+                        <p style="margin-top: 10px;">Cliquez pour prendre une photo ou uploader</p>
+                        <p style="font-size: 12px; color: #999;">JPG, PNG, WEBP (Max 5MB)</p>
+                    </div>
+                    <img id="photoPreview" class="photo-preview" alt="Aperçu">
+                </div>
+                <input type="file" id="imageInput" name="image" accept="image/*" required>
+                <button type="button" class="btn btn-secondary" id="btnCamera" style="width: 100%; margin-top: 10px;">📸 Prendre une Photo</button>
+                <input type="file" id="cameraCapture" accept="image/*" capture="environment">
+            </div>
+
+            <div class="alert alert-info">
+                ℹ️ <strong>Note:</strong> Le type de déchet et le volume seront analysés automatiquement par notre système IA.
+            </div>
+
+            <button type="submit" class="btn-submit" id="btnSubmit">✅ SIGNALER LE DÉCHET</button>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px;">Envoi en cours...</p>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        let gpsMode = 'auto';
+        let currentLat = null;
+        let currentLon = null;
+
+        document.getElementById('btnAutoGPS').addEventListener('click', () => {
+            gpsMode = 'auto';
+            document.getElementById('manualCoords').classList.remove('active');
+            document.getElementById('btnAutoGPS').classList.add('btn-primary');
+            document.getElementById('btnAutoGPS').classList.remove('btn-secondary');
+            document.getElementById('btnManualGPS').classList.add('btn-secondary');
+            document.getElementById('btnManualGPS').classList.remove('btn-primary');
+            getGPSLocation();
+        });
+
+        document.getElementById('btnManualGPS').addEventListener('click', () => {
+            gpsMode = 'manual';
+            document.getElementById('manualCoords').classList.add('active');
+            document.getElementById('btnManualGPS').classList.add('btn-primary');
+            document.getElementById('btnManualGPS').classList.remove('btn-secondary');
+            document.getElementById('btnAutoGPS').classList.add('btn-secondary');
+            document.getElementById('btnAutoGPS').classList.remove('btn-primary');
+            document.getElementById('gpsStatus').textContent = 'Mode manuel activé';
+            document.getElementById('gpsStatus').className = 'gps-status active';
+        });
+
+        function getGPSLocation() {
+            if (!navigator.geolocation) {
+                showAlert('Votre navigateur ne supporte pas la géolocalisation', 'error');
+                return;
+            }
+
+            document.getElementById('gpsStatus').textContent = 'Localisation en cours...';
+            document.getElementById('gpsStatus').className = 'gps-status';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    currentLat = position.coords.latitude;
+                    currentLon = position.coords.longitude;
+                    document.getElementById('latitude').value = currentLat;
+                    document.getElementById('longitude').value = currentLon;
+                    document.getElementById('gpsStatus').textContent = `Position: ${currentLat.toFixed(6)}, ${currentLon.toFixed(6)} (±${position.coords.accuracy.toFixed(0)}m)`;
+                    document.getElementById('gpsStatus').className = 'gps-status active';
+                },
+                (error) => {
+                    let message = 'Erreur de localisation';
+                    if (error.code === 1) message = 'Permission refusée. Activez la localisation.';
+                    if (error.code === 2) message = 'Position indisponible';
+                    if (error.code === 3) message = 'Délai dépassé';
+                    showAlert(message, 'error');
+                    document.getElementById('gpsStatus').textContent = message;
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        document.getElementById('imageInput').addEventListener('change', handleImageSelect);
+        document.getElementById('photoSection').addEventListener('click', () => {
+            document.getElementById('imageInput').click();
+        });
+
+        document.getElementById('btnCamera').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('cameraCapture').click();
+        });
+
+        document.getElementById('cameraCapture').addEventListener('change', handleImageSelect);
+
+        function handleImageSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+                showAlert('L\'image ne doit pas dépasser 5MB', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('photoPreview').src = e.target.result;
+                document.getElementById('photoPreview').classList.add('active');
+                document.getElementById('photoPlaceholder').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+
+            if (e.target.id === 'cameraCapture') {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                document.getElementById('imageInput').files = dt.files;
+            }
+        }
+
+        document.getElementById('signalerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            let lat, lon;
+            if (gpsMode === 'auto') {
+                lat = document.getElementById('latitude').value;
+                lon = document.getElementById('longitude').value;
+                if (!lat || !lon) {
+                    showAlert('Veuillez activer le GPS ou saisir les coordonnées manuellement', 'error');
+                    return;
+                }
+            } else {
+                lat = document.getElementById('manualLat').value;
+                lon = document.getElementById('manualLon').value;
+                if (!lat || !lon) {
+                    showAlert('Veuillez saisir la latitude et la longitude', 'error');
+                    return;
+                }
+                document.getElementById('latitude').value = lat;
+                document.getElementById('longitude').value = lon;
+            }
+
+            const imageFile = document.getElementById('imageInput').files[0];
+            if (!imageFile) {
+                showAlert('Veuillez sélectionner une photo', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', imageFile);
+            formData.append('latitude', lat);
+            formData.append('longitude', lon);
+
+            document.getElementById('btnSubmit').disabled = true;
+            document.getElementById('loading').classList.add('active');
+
+            try {
+                const response = await fetch('/api/pointdechet/signaler', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('✅ Déchet signalé avec succès! ' + data.message, 'success');
+                    setTimeout(() => window.location.href = '/carte', 2000);
+                } else {
+                    showAlert(data.message || 'Erreur lors du signalement', 'error');
+                }
+            } catch (error) {
+                showAlert('Erreur réseau: ' + error.message, 'error');
+            } finally {
+                document.getElementById('btnSubmit').disabled = false;
+                document.getElementById('loading').classList.remove('active');
+            }
+        });
+
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            document.getElementById('alertContainer').innerHTML = '';
+            document.getElementById('alertContainer').appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+
+        getGPSLocation();
+    </script>
+</body>
+</html>
