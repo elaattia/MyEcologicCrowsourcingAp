@@ -1,4 +1,5 @@
 using MyEcologicCrowsourcingApp.Data;
+using MyEcologicCrowsourcingApp.Controllers;
 using MyEcologicCrowsourcingApp.Models;
 using Microsoft.EntityFrameworkCore;
 using MyEcologicCrowsourcingApp.Services;
@@ -42,6 +43,9 @@ builder.Services.AddHttpClient("Roboflow", client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
+builder.Services.AddHttpClient(); // Pour les appels OSRM
+builder.Services.AddScoped<VRPOptimisationService>();
+
 builder.Services.AddMemoryCache();
 
 builder.Services.AddAuthentication(options =>
@@ -66,7 +70,6 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
     
-    // Pour déboguer les erreurs d'authentification
     options.Events = new JwtBearerEvents
     {
         OnAuthenticationFailed = context =>
@@ -113,9 +116,8 @@ app.UseStaticFiles();
 app.UseHttpsRedirection();
 app.UseRouting();
 
-// IMPORTANT: L'ordre est crucial
-app.UseAuthentication(); // D'abord l'authentification
-app.UseAuthorization();  // Ensuite l'autorisation
+app.UseAuthentication(); 
+app.UseAuthorization();  
 
 app.MapStaticAssets();
 

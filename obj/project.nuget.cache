@@ -1,10 +1,17 @@
 {
   "version": 2,
-  "dgSpecHash": "kiHimGTYhwg=",
+  "dgSpecHash": "vB6HCVOxPXg=",
   "success": true,
   "projectFilePath": "C:\\Users\\noura\\Downloads\\projet dotnet cours\\MyEcologicCrowsourcingApp\\MyEcologicCrowsourcingApp.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\noura\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
+    "C:\\Users\\noura\\.nuget\\packages\\google.ortools\\9.14.6206\\google.ortools.9.14.6206.nupkg.sha512",
+    "C:\\Users\\noura\\.nuget\\packages\\google.ortools.runtime.linux-arm64\\9.14.6206\\google.ortools.runtime.linux-arm64.9.14.6206.nupkg.sha512",
+    "C:\\Users\\noura\\.nuget\\packages\\google.ortools.runtime.linux-x64\\9.14.6206\\google.ortools.runtime.linux-x64.9.14.6206.nupkg.sha512",
+    "C:\\Users\\noura\\.nuget\\packages\\google.ortools.runtime.osx-arm64\\9.14.6206\\google.ortools.runtime.osx-arm64.9.14.6206.nupkg.sha512",
+    "C:\\Users\\noura\\.nuget\\packages\\google.ortools.runtime.osx-x64\\9.14.6206\\google.ortools.runtime.osx-x64.9.14.6206.nupkg.sha512",
+    "C:\\Users\\noura\\.nuget\\packages\\google.ortools.runtime.win-x64\\9.14.6206\\google.ortools.runtime.win-x64.9.14.6206.nupkg.sha512",
+    "C:\\Users\\noura\\.nuget\\packages\\google.protobuf\\3.31.1\\google.protobuf.3.31.1.nupkg.sha512",
     "C:\\Users\\noura\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\noura\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\9.0.9\\microsoft.aspnetcore.authentication.jwtbearer.9.0.9.nupkg.sha512",
     "C:\\Users\\noura\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\7.0.0\\microsoft.bcl.asyncinterfaces.7.0.0.nupkg.sha512",
