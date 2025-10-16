@@ -16,18 +16,31 @@ namespace MyEcologicCrowsourcingApp.Repositories
 
         public async Task<IEnumerable<Organisation>> GetAllAsync()
             => await _context.Organisations
-                .Include(o => o.Vehicule) // eager load vehicule if needed
                 .ToListAsync();
 
         public async Task<Organisation?> GetByIdAsync(Guid id)
-            => await _context.Organisations
-                .Include(o => o.Vehicule)
+        {
+            Console.WriteLine($"Recherche organisation avec ID: {id}");
+            
+            var org = await _context.Organisations
+                .AsNoTracking() // Ajoutez ceci pour éviter les problèmes de tracking
                 .FirstOrDefaultAsync(o => o.OrganisationId == id);
-
+            
+            Console.WriteLine($"Organisation trouvée: {org != null}");
+            
+            if (org != null)
+            {
+                Console.WriteLine($"Nom: {org.Nom}, RepresentantId: {org.RepresentantId}");
+            }
+            
+            return org;
+        }
         public async Task AddAsync(Organisation organisation)
         {
+            Console.WriteLine($"OrganisationRepository.AddAsync - OrgId: {organisation.OrganisationId}, Nom: {organisation.Nom}");
             await _context.Organisations.AddAsync(organisation);
             await _context.SaveChangesAsync();
+            Console.WriteLine("SaveChanges appelé pour Organisation");
         }
 
         public async Task UpdateAsync(Organisation organisation)

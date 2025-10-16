@@ -1,7 +1,8 @@
 using MyEcologicCrowsourcingApp.Models;
 using MyEcologicCrowsourcingApp.Repositories.Interfaces;
 using MyEcologicCrowsourcingApp.Services.Interfaces;
-using BCrypt.Net;
+using MyEcologicCrowsourcingApp.DTOs;
+
 namespace MyEcologicCrowsourcingApp.Services
 {
     public class VehiculeService : IVehiculeService
@@ -13,29 +14,88 @@ namespace MyEcologicCrowsourcingApp.Services
             _repository = repository;
         }
 
-        public async Task<IEnumerable<Vehicule>> GetAllAsync() => await _repository.GetAllAsync();
+        public async Task<IEnumerable<VehiculeDto>> GetAllAsync()
+        {
+            var vehicules = await _repository.GetAllAsync();
+            return vehicules.Select(v => new VehiculeDto
+            {
+                Id = v.Id,
+                Immatriculation = v.Immatriculation,
+                Type = v.Type.ToString(),
+                CapaciteMax = v.CapaciteMax,
+                VitesseMoyenne = v.VitesseMoyenne,
+                CarburantConsommation = v.CarburantConsommation,
+                OrganisationId = v.OrganisationId,
+                EstDisponible = v.EstDisponible,
+                DerniereUtilisation = v.DerniereUtilisation
+            });
+        }
 
-        public async Task<Vehicule?> GetByIdAsync(Guid id) => await _repository.GetByIdAsync(id);
+        public async Task<VehiculeDto?> GetByIdAsync(Guid id)
+        {
+            var vehicule = await _repository.GetByIdAsync(id);
+            if (vehicule == null) return null;
 
-        public async Task<Vehicule> CreateAsync(Vehicule vehicule)
+            return new VehiculeDto
+            {
+                Id = vehicule.Id,
+                Immatriculation = vehicule.Immatriculation,
+                Type = vehicule.Type.ToString(),
+                CapaciteMax = vehicule.CapaciteMax,
+                VitesseMoyenne = vehicule.VitesseMoyenne,
+                CarburantConsommation = vehicule.CarburantConsommation,
+                OrganisationId = vehicule.OrganisationId,
+                EstDisponible = vehicule.EstDisponible,
+                DerniereUtilisation = vehicule.DerniereUtilisation
+            };
+        }
+
+        public async Task<VehiculeDto> CreateAsync(Vehicule vehicule)
         {
             vehicule.Id = Guid.NewGuid();
             await _repository.AddAsync(vehicule);
-            return vehicule;
+            
+            return new VehiculeDto
+            {
+                Id = vehicule.Id,
+                Immatriculation = vehicule.Immatriculation,
+                Type = vehicule.Type.ToString(),
+                CapaciteMax = vehicule.CapaciteMax,
+                VitesseMoyenne = vehicule.VitesseMoyenne,
+                CarburantConsommation = vehicule.CarburantConsommation,
+                OrganisationId = vehicule.OrganisationId,
+                EstDisponible = vehicule.EstDisponible,
+                DerniereUtilisation = vehicule.DerniereUtilisation
+            };
         }
 
-        public async Task<Vehicule?> UpdateAsync(Guid id, Vehicule vehicule)
+        public async Task<VehiculeDto?> UpdateAsync(Guid id, Vehicule vehicule)
         {
             var existing = await _repository.GetByIdAsync(id);
             if (existing == null) return null;
 
+            existing.Immatriculation = vehicule.Immatriculation;
             existing.Type = vehicule.Type;
             existing.CapaciteMax = vehicule.CapaciteMax;
             existing.VitesseMoyenne = vehicule.VitesseMoyenne;
             existing.CarburantConsommation = vehicule.CarburantConsommation;
+            existing.EstDisponible = vehicule.EstDisponible;
+            existing.DerniereUtilisation = vehicule.DerniereUtilisation;
 
             await _repository.UpdateAsync(existing);
-            return existing;
+            
+            return new VehiculeDto
+            {
+                Id = existing.Id,
+                Immatriculation = existing.Immatriculation,
+                Type = existing.Type.ToString(),
+                CapaciteMax = existing.CapaciteMax,
+                VitesseMoyenne = existing.VitesseMoyenne,
+                CarburantConsommation = existing.CarburantConsommation,
+                OrganisationId = existing.OrganisationId,
+                EstDisponible = existing.EstDisponible,
+                DerniereUtilisation = existing.DerniereUtilisation
+            };
         }
 
         public async Task<bool> DeleteAsync(Guid id)

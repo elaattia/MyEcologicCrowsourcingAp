@@ -28,6 +28,7 @@ namespace MyEcologicCrowsourcingApp.Services
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Role, user.Role.ToString()),
+                new Claim("OrganisationId", user.OrganisationId?.ToString() ?? ""),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 

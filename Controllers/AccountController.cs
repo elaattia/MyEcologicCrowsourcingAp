@@ -49,13 +49,12 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
             });
 
-            // CORRECTION: HttpOnly = false pour permettre l'accès JavaScript
-            Response.Cookies.Append("JwtToken", loginResponse.Token, new CookieOptions
+            Response.Cookies.Append("JwtToken", loginResponse!.Token, new CookieOptions
             {
-                HttpOnly = false,  // ⚠️ CHANGÉ de true à false
-                Secure = false,     // Mettre true en production avec HTTPS
-                SameSite = SameSiteMode.Lax,  // ⚠️ CHANGÉ de Strict à Lax
-                Expires = DateTimeOffset.UtcNow.AddDays(30)  // ⚠️ Augmenté à 30 jours
+                HttpOnly = false,  
+                Secure = false,    
+                SameSite = SameSiteMode.Lax, 
+                Expires = DateTimeOffset.UtcNow.AddDays(30) 
             });
 
             return RedirectToAction("Welcome", "Upload");

@@ -26,14 +26,18 @@ namespace MyEcologicCrowsourcingApp.Repositories
 
         public async Task AddAsync(User user)
         {
+            Console.WriteLine($"UserRepository.AddAsync - UserId: {user.UserId}, Email: {user.Email}");
             await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
+            Console.WriteLine("SaveChanges appelé pour User");
         }
 
         public async Task UpdateAsync(User user)
         {
+            Console.WriteLine($"UserRepository.UpdateAsync - UserId: {user.UserId}, OrgId: {user.OrganisationId}");
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
+            Console.WriteLine("SaveChanges appelé pour User update");
         }
 
         public async Task DeleteAsync(Guid id)

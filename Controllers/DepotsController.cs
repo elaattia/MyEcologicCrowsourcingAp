@@ -9,14 +9,14 @@ namespace MyEcologicCrowsourcingApp.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize] 
-    public class VehiculesController : Controller
+    public class DepotsController : Controller
     {
-        private readonly IVehiculeService _vehiculeService;
+        private readonly IDepotService _depotService;
         private readonly IUserService _userService;
 
-        public VehiculesController(IVehiculeService vehiculeService, IUserService userService)
+        public DepotsController(IDepotService depotService, IUserService userService)
         {
-            _vehiculeService = vehiculeService;
+            _depotService = depotService;
             _userService = userService;
         }
 
@@ -33,13 +33,12 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 return Unauthorized("Utilisateur non trouvé.");
 
             if (user.Role != UserRole.Representant)
-                return StatusCode(403, "Seuls les représentants peuvent consulter les véhicules.");
+                return StatusCode(403, "Seuls les représentants peuvent consulter les dépôts.");
 
-            // Filtrer uniquement les véhicules de son organisation
-            var vehicules = await _vehiculeService.GetAllAsync();
-            var vehiculesOrg = vehicules.Where(v => v.OrganisationId == user.OrganisationId);
+            var depots = await _depotService.GetAllAsync();
+            var depotsOrg = depots.Where(d => d.OrganisationId == user.OrganisationId);
             
-            return Ok(vehiculesOrg);
+            return Ok(depotsOrg);
         }
 
         [HttpGet("{id:guid}")]
@@ -55,20 +54,19 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 return Unauthorized("Utilisateur non trouvé.");
 
             if (user.Role != UserRole.Representant)
-                return StatusCode(403, "Seuls les représentants peuvent consulter les véhicules.");
+                return StatusCode(403, "Seuls les représentants peuvent consulter les dépôts.");
 
-            var vehicule = await _vehiculeService.GetByIdAsync(id);
-            if (vehicule == null) return NotFound();
+            var depot = await _depotService.GetByIdAsync(id);
+            if (depot == null) return NotFound();
 
-            // Vérifier que le véhicule appartient à son organisation
-            if (vehicule.OrganisationId != user.OrganisationId)
-                return StatusCode(403, "Vous ne pouvez consulter que les véhicules de votre organisation.");
+            if (depot.OrganisationId != user.OrganisationId)
+                return StatusCode(403, "Vous ne pouvez consulter que les dépôts de votre organisation.");
 
-            return Ok(vehicule);
+            return Ok(depot);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] Vehicule vehicule)
+        public async Task<IActionResult> Create([FromBody] Depot depot)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -82,15 +80,15 @@ namespace MyEcologicCrowsourcingApp.Controllers
             if (user == null)
                 return Unauthorized("Utilisateur non trouvé.");
 
-            if (user.Role != UserRole.Representant || user.OrganisationId != vehicule.OrganisationId)
-                return StatusCode(403, "Vous n'êtes pas autorisé à créer un véhicule pour cette organisation.");
+            if (user.Role != UserRole.Representant || user.OrganisationId != depot.OrganisationId)
+                return StatusCode(403, "Vous n'êtes pas autorisé à créer un dépôt pour cette organisation.");
 
-            var created = await _vehiculeService.CreateAsync(vehicule);
+            var created = await _depotService.CreateAsync(depot);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
         [HttpPut("{id:guid}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] Vehicule vehicule)
+        public async Task<IActionResult> Update(Guid id, [FromBody] Depot depot)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -104,10 +102,10 @@ namespace MyEcologicCrowsourcingApp.Controllers
             if (user == null)
                 return Unauthorized("Utilisateur non trouvé.");
 
-            if (user.Role != UserRole.Representant || user.OrganisationId != vehicule.OrganisationId)
-                return StatusCode(403, "Vous n'êtes pas autorisé à modifier ce véhicule.");
+            if (user.Role != UserRole.Representant || user.OrganisationId != depot.OrganisationId)
+                return StatusCode(403, "Vous n'êtes pas autorisé à modifier ce dépôt.");
 
-            var updated = await _vehiculeService.UpdateAsync(id, vehicule);
+            var updated = await _depotService.UpdateAsync(id, depot);
             if (updated == null) return NotFound();
             return Ok(updated);
         }
@@ -115,8 +113,8 @@ namespace MyEcologicCrowsourcingApp.Controllers
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            var vehicule = await _vehiculeService.GetByIdAsync(id);
-            if (vehicule == null) return NotFound();
+            var depot = await _depotService.GetByIdAsync(id);
+            if (depot == null) return NotFound();
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim))
@@ -127,10 +125,10 @@ namespace MyEcologicCrowsourcingApp.Controllers
             if (user == null)
                 return Unauthorized("Utilisateur non trouvé.");
 
-            if (user.Role != UserRole.Representant || user.OrganisationId != vehicule.OrganisationId)
-                return StatusCode(403, "Vous n'êtes pas autorisé à supprimer ce véhicule.");
+            if (user.Role != UserRole.Representant || user.OrganisationId != depot.OrganisationId)
+                return StatusCode(403, "Vous n'êtes pas autorisé à supprimer ce dépôt.");
 
-            var deleted = await _vehiculeService.DeleteAsync(id);
+            var deleted = await _depotService.DeleteAsync(id);
             if (!deleted) return NotFound();
             return NoContent();
         }

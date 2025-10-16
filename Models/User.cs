@@ -6,6 +6,7 @@ namespace MyEcologicCrowsourcingApp.Models
     public enum UserRole
     {
         User,
+        Representant,
         Admin
     }
 
@@ -20,8 +21,11 @@ namespace MyEcologicCrowsourcingApp.Models
         public string Username { get; set; } = string.Empty;
         [Required]
         [MinLength(6)]
-        public string Password { get; set; } = string.Empty; 
+        public string Password { get; set; } = string.Empty;
         [Required]
         public UserRole Role { get; set; }
+        
+        public Guid? OrganisationId { get; set; }  
+        public Organisation? Organisation { get; set; }
     }
 }

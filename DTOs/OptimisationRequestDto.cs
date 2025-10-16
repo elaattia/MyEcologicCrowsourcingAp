@@ -6,12 +6,15 @@ namespace MyEcologicCrowsourcingApp.DTOs
     public class OptimisationRequestDto
     {
         public Guid OrganisationId { get; set; }
-        public int NombreVehicules { get; set; } = 1;
+        public List<Guid>? VehiculesIds { get; set; }
+        public Guid? DepotId { get; set; }
+        public double? DepotLatitude { get; set; }
+        public double? DepotLongitude { get; set; }
+        public int? NombreVehicules { get; set; } = 1;
         public double CapaciteVehicule { get; set; } = 10.0; // m³
         public TimeSpan TempsMaxParTrajet { get; set; } = TimeSpan.FromHours(8);
         public string ZoneGeographique { get; set; } = "";
-        public double? DepotLatitude { get; set; }
-        public double? DepotLongitude { get; set; }
+
     }
 
     public class OptimisationResponseDto
@@ -31,7 +34,7 @@ namespace MyEcologicCrowsourcingApp.DTOs
         public int VehiculeNumero { get; set; }
         public int NombrePoints { get; set; }
         public double DistanceKm { get; set; }
-        public string DureeEstimee { get; set; }
+        public string? DureeEstimee { get; set; }
         public double CarburantLitres { get; set; }
         public List<PointDechetSimpleDto> Points { get; set; } = new();
     }
@@ -41,8 +44,10 @@ namespace MyEcologicCrowsourcingApp.DTOs
         public Guid Id { get; set; }
         public double Latitude { get; set; }
         public double Longitude { get; set; }
-        public string Type { get; set; }
+        public string? Type { get; set; }
         public double Volume { get; set; }
-        public string Zone { get; set; }
+        public string? Zone { get; set; }
     }
+    
+    
 }

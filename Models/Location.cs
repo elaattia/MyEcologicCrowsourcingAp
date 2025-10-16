@@ -22,27 +22,27 @@ namespace MyEcologicCrowsourcingApp.Models
 
     public class OSRMTableResponse
     {
-        public double[][] distances { get; set; }
-        public double[][] durations { get; set; }
+        public double[][]? distances { get; set; }
+        public double[][]? durations { get; set; }
     }
 
     public class OSRMRouteResponse
     {
-        public OSRMRoute[] routes { get; set; }
+        public OSRMRoute[]? routes { get; set; }
     }
 
     public class OSRMRoute
     {
         public double distance { get; set; } // en mètres
         public double duration { get; set; } // en secondes
-        public OSRMGeometry geometry { get; set; }
-        public OSRMStep[] legs { get; set; }
+        public OSRMGeometry? geometry { get; set; }
+        public OSRMStep[]? legs { get; set; }
     }
 
     public class OSRMGeometry
     {
-        public string type { get; set; }
-        public double[][] coordinates { get; set; }
+        public string? type { get; set; }
+        public double[][]? coordinates { get; set; }
     }
 
     public class OSRMStep

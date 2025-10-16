@@ -21,6 +21,11 @@ namespace MyEcologicCrowsourcingApp.Services
         {
             user.UserId = Guid.NewGuid();
             user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password);
+
+            if (user.Role == UserRole.Representant && user.OrganisationId == null)
+                throw new ArgumentException("Un représentant doit être lié à une organisation.");
+
+
             await _repository.AddAsync(user);
             return user;
         }
@@ -51,13 +56,18 @@ namespace MyEcologicCrowsourcingApp.Services
         public async Task<User?> AuthenticateAsync(string email, string password)
         {
             var user = await _repository.GetByEmailAsync(email);
-            
+
             if (user == null) return null;
 
             bool isValidPassword = BCrypt.Net.BCrypt.Verify(password, user.Password);
-            
+
 
             return isValidPassword ? user : null;
+        }
+        
+        public async Task<User?> GetByEmailAsync(string email)
+        {
+            return await _repository.GetByEmailAsync(email);
         }
     }
 }

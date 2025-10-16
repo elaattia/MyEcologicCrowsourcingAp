@@ -9,8 +9,12 @@ using MyEcologicCrowsourcingApp.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// IMPORTANT: Désactiver le mapping automatique des claims JWT
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 // Configuration JWT
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
@@ -38,6 +42,9 @@ builder.Services.AddScoped<IOrganisationService, OrganisationService>();
 builder.Services.AddScoped<IVehiculeRepository, VehiculeRepository>();
 builder.Services.AddScoped<IVehiculeService, VehiculeService>();
 
+builder.Services.AddScoped<IDepotRepository, DepotRepository>();
+builder.Services.AddScoped<IDepotService, DepotService>();
+
 builder.Services.AddHttpClient("Roboflow", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(30);
@@ -57,7 +64,7 @@ builder.Services.AddAuthentication(options =>
 .AddJwtBearer(options =>
 {
     options.SaveToken = true;
-    options.RequireHttpsMetadata = false; // Mettre à true en production
+    options.RequireHttpsMetadata = false; 
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -82,6 +89,13 @@ builder.Services.AddAuthentication(options =>
         {
             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
             logger.LogInformation("Token validé avec succès");
+            
+            var claims = context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}");
+            if (claims != null)
+            {
+                logger.LogInformation("Claims: {Claims}", string.Join(", ", claims));
+            }
+            
             return Task.CompletedTask;
         }
     };
@@ -101,7 +115,6 @@ builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -117,7 +130,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseAuthentication(); 
-app.UseAuthorization();  
+app.UseAuthorization();
 
 app.MapStaticAssets();
 

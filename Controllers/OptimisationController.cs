@@ -27,9 +27,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// Optimiser les tournées de collecte pour une organisation
-        /// </summary>
         [HttpPost("optimiser")]
         public async Task<IActionResult> OptimiserTournees([FromBody] OptimisationRequestDto request)
         {
@@ -37,81 +34,182 @@ namespace MyEcologicCrowsourcingApp.Controllers
             {
                 _logger.LogInformation("Début optimisation pour organisation {OrgId}", request.OrganisationId);
 
-                // Récupérer l'organisation avec ses véhicules
+                // 1. RÉCUPÉRER L'ORGANISATION
                 var organisation = await _context.Set<Organisation>()
-                    .Include(o => o.Vehicule)
+                    .Include(o => o.Vehicules)
+                    .Include(o => o.Depots)
                     .FirstOrDefaultAsync(o => o.OrganisationId == request.OrganisationId);
 
                 if (organisation == null)
-                {
                     return NotFound(new { message = "Organisation non trouvée" });
+
+                // 2. RÉCUPÉRER LES VÉHICULES DYNAMIQUEMENT
+                List<Vehicule> vehicules;
+                
+                if (request.VehiculesIds?.Any() == true)
+                {
+                    // Option A : Véhicules spécifiques
+                    vehicules = await _context.Set<Vehicule>()
+                        .Where(v => request.VehiculesIds.Contains(v.Id))
+                        .Where(v => v.OrganisationId == request.OrganisationId)
+                        .Where(v => v.EstDisponible)
+                        .ToListAsync();
+
+                    if (!vehicules.Any())
+                        return BadRequest(new { message = "Aucun véhicule disponible parmi ceux sélectionnés" });
+                }
+                else if (request.NombreVehicules.HasValue && request.NombreVehicules > 0)
+                {
+                    // Option B : Prendre N véhicules disponibles
+                    vehicules = await _context.Set<Vehicule>()
+                        .Where(v => v.OrganisationId == request.OrganisationId)
+                        .Where(v => v.EstDisponible)
+                        .Take(request.NombreVehicules.Value)
+                        .ToListAsync();
+
+                    if (vehicules.Count < request.NombreVehicules.Value)
+                    {
+                        return BadRequest(new { 
+                            message = $"Seulement {vehicules.Count} véhicules disponibles sur {request.NombreVehicules.Value} demandés"
+                        });
+                    }
+                }
+                else
+                {
+                    // Option C : Tous les véhicules disponibles
+                    vehicules = await _context.Set<Vehicule>()
+                        .Where(v => v.OrganisationId == request.OrganisationId)
+                        .Where(v => v.EstDisponible)
+                        .ToListAsync();
+
+                    if (!vehicules.Any())
+                        return BadRequest(new { message = "Aucun véhicule disponible pour cette organisation" });
                 }
 
-                // Récupérer les points de déchets signalés dans la zone
-                var pointsDechets = await _context.PointDechets
-                    .Where(p => p.Statut == StatutDechet.Signale)
-                    .Where(p => string.IsNullOrEmpty(request.ZoneGeographique) || 
-                               p.Zone.Contains(request.ZoneGeographique))
-                    .ToListAsync();
+                _logger.LogInformation("Véhicules sélectionnés: {Count}", vehicules.Count);
+
+                // 3. RÉCUPÉRER LE DÉPÔT DYNAMIQUEMENT
+                Location depot;
+                
+                if (request.DepotId.HasValue)
+                {
+                    // Option A : Dépôt existant
+                    var depotEntity = await _context.Set<Depot>()
+                        .FirstOrDefaultAsync(d => d.Id == request.DepotId.Value 
+                                                && d.OrganisationId == request.OrganisationId
+                                                && d.EstActif);
+
+                    if (depotEntity == null)
+                        return BadRequest(new { message = "Dépôt introuvable ou inactif" });
+
+                    depot = new Location
+                    {
+                        Latitude = depotEntity.Latitude,
+                        Longitude = depotEntity.Longitude,
+                        Name = depotEntity.Nom
+                    };
+                }
+                else if (request.DepotLatitude.HasValue && request.DepotLongitude.HasValue)
+                {
+                    // Option B : Coordonnées manuelles
+                    depot = new Location
+                    {
+                        Latitude = request.DepotLatitude.Value,
+                        Longitude = request.DepotLongitude.Value,
+                        Name = "Dépôt Temporaire"
+                    };
+                }
+                else
+                {
+                    // Option C : Premier dépôt de l'organisation
+                    var depotParDefaut = await _context.Set<Depot>()
+                        .FirstOrDefaultAsync(d => d.OrganisationId == request.OrganisationId 
+                                                && d.EstActif);
+
+                    if (depotParDefaut == null)
+                    {
+                        // Fallback : Centre de la Tunisie
+                        depot = new Location
+                        {
+                            Latitude = 36.8065,
+                            Longitude = 10.1815,
+                            Name = "Dépôt Par Défaut"
+                        };
+                        _logger.LogWarning("Aucun dépôt configuré, utilisation coordonnées par défaut");
+                    }
+                    else
+                    {
+                        depot = new Location
+                        {
+                            Latitude = depotParDefaut.Latitude,
+                            Longitude = depotParDefaut.Longitude,
+                            Name = depotParDefaut.Nom
+                        };
+                    }
+                }
+
+                _logger.LogInformation("Dépôt: {Name} ({Lat}, {Lon})", depot.Name, depot.Latitude, depot.Longitude);
+
+                // 4. RÉCUPÉRER LES POINTS DE DÉCHETS
+                var query = _context.PointDechets
+                    .Where(p => p.Statut == StatutDechet.Signale);
+
+                if (!string.IsNullOrEmpty(request.ZoneGeographique))
+                {
+                    var zone = request.ZoneGeographique.ToLower();
+                    query = query.Where(p => 
+                        p.Zone.ToLower().Contains(zone) || 
+                        p.Zone == "Inconnue");
+                }
+
+                var pointsDechets = await query.ToListAsync();
 
                 if (!pointsDechets.Any())
                 {
-                    return BadRequest(new { message = "Aucun point de déchet à collecter" });
-                }
-
-                _logger.LogInformation("Points trouvés: {Count}", pointsDechets.Count);
-
-                // Créer la liste de véhicules (pour simplifier, on utilise le même véhicule plusieurs fois)
-                var vehicules = new List<Vehicule>();
-                for (int i = 0; i < request.NombreVehicules; i++)
-                {
-                    vehicules.Add(new Vehicule
-                    {
-                        Id = Guid.NewGuid(),
-                        Type = organisation.Vehicule?.Type ?? TypeVehicule.Camion,
-                        CapaciteMax = request.CapaciteVehicule > 0 ? request.CapaciteVehicule : 10.0,
-                        VitesseMoyenne = 30.0,
-                        CarburantConsommation = 8.0
+                    return BadRequest(new { 
+                        message = "Aucun point de déchet à collecter",
+                        info = "Tous les déchets ont été nettoyés ou aucun déchet dans cette zone"
                     });
                 }
 
-                // Définir le dépôt (par défaut, centre de la Tunisie ou premier point)
-                var depot = new Location
-                {
-                    Latitude = request.DepotLatitude ?? 36.8065,
-                    Longitude = request.DepotLongitude ?? 10.1815,
-                    Name = "Dépôt Central"
-                };
+                _logger.LogInformation("Points disponibles: {Count}", pointsDechets.Count);
 
-                // OPTIMISER avec VRP Service
+                // 5. OPTIMISER
                 var itineraires = await _vrpService.OptimiserTournees(
                     pointsDechets,
                     vehicules,
                     depot);
 
-                // Sauvegarder les résultats
+                // 6. SAUVEGARDER
                 var optimisationRequest = new OptimisationRequest
                 {
                     Id = Guid.NewGuid(),
                     OrganisationId = request.OrganisationId,
                     ListePointsIds = pointsDechets.Select(p => p.Id).ToList(),
-                    CapaciteVehicule = request.CapaciteVehicule,
+                    CapaciteVehicule = vehicules.Average(v => v.CapaciteMax),
                     TempsMaxParTrajet = request.TempsMaxParTrajet,
                     ZoneGeographique = request.ZoneGeographique
                 };
 
                 _context.Set<OptimisationRequest>().Add(optimisationRequest);
 
-                // Associer les itinéraires à l'organisation
                 foreach (var itineraire in itineraires)
                 {
                     itineraire.OrganisationId = request.OrganisationId;
+                    itineraire.Statut = StatutItineraire.EnAttente;
+                    itineraire.DateCreation = DateTime.UtcNow;
                     _context.Set<Itineraire>().Add(itineraire);
+                }
+
+                // Marquer les véhicules comme utilisés
+                foreach (var vehicule in vehicules)
+                {
+                    vehicule.DerniereUtilisation = DateTime.UtcNow;
                 }
 
                 await _context.SaveChangesAsync();
 
-                // Préparer la réponse
+                // 7. RÉPONSE
                 var response = new OptimisationResponseDto
                 {
                     OptimisationRequestId = optimisationRequest.Id,
@@ -140,9 +238,7 @@ namespace MyEcologicCrowsourcingApp.Controllers
                     ScoreEfficacite = CalculerScoreEfficacite(itineraires, pointsDechets.Count)
                 };
 
-                _logger.LogInformation("Optimisation terminée: {Count} itinéraires, {Distance} km total",
-                    response.NombreItineraires, response.DistanceTotale);
-
+                _logger.LogInformation("Optimisation terminée: {Count} itinéraires", response.NombreItineraires);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -152,51 +248,12 @@ namespace MyEcologicCrowsourcingApp.Controllers
             }
         }
 
-        /// <summary>
-        /// Récupérer tous les itinéraires d'une organisation
-        /// </summary>
-        [HttpGet("itineraires/{organisationId}")]
-        public async Task<IActionResult> GetItineraires(Guid organisationId)
-        {
-            var itineraires = await _context.Set<Itineraire>()
-                .Include(i => i.ListePoints)
-                .Where(i => i.OrganisationId == organisationId)
-                .OrderByDescending(i => i.Id)
-                .Take(10)
-                .ToListAsync();
-
-            return Ok(itineraires);
-        }
-
-        /// <summary>
-        /// Récupérer un itinéraire spécifique avec détails
-        /// </summary>
-        [HttpGet("itineraire/{id}")]
-        public async Task<IActionResult> GetItineraire(Guid id)
-        {
-            var itineraire = await _context.Set<Itineraire>()
-                .Include(i => i.ListePoints)
-                .Include(i => i.Organisation)
-                .FirstOrDefaultAsync(i => i.Id == id);
-
-            if (itineraire == null)
-                return NotFound();
-
-            return Ok(itineraire);
-        }
-
         private double CalculerScoreEfficacite(List<Itineraire> itineraires, int totalPoints)
         {
             if (!itineraires.Any()) return 0;
-
             var distanceMoyenneParPoint = itineraires.Sum(i => i.DistanceTotale) / totalPoints;
-            
-            // Score sur 100: moins de distance par point = meilleur score
-            // 100 points si < 2km par point, décroissant jusqu'à 0
             var score = Math.Max(0, 100 - (distanceMoyenneParPoint * 20));
-            
             return Math.Round(score, 2);
         }
     }
-
 }

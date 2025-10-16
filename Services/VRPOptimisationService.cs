@@ -76,6 +76,11 @@ namespace MyEcologicCrowsourcingApp.Services
             var json = await response.Content.ReadAsStringAsync();
             var osrmResponse = JsonSerializer.Deserialize<OSRMTableResponse>(json);
 
+            if (osrmResponse?.distances == null)
+            {
+                throw new InvalidOperationException("La réponse OSRM est invalide ou ne contient pas de distances.");
+            }
+
             // Convertir en matrice OR-Tools (distances en mètres)
             int size = points.Count + 1;
             var matrix = new long[size, size];
@@ -84,7 +89,7 @@ namespace MyEcologicCrowsourcingApp.Services
             {
                 for (int j = 0; j < size; j++)
                 {
-                    matrix[i, j] = (long)(osrmResponse.distances[i][j]);
+                    matrix[i, j] = (long)osrmResponse.distances[i][j];
                 }
             }
 

@@ -2,65 +2,143 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyEcologicCrowsourcingApp.Models;
 using MyEcologicCrowsourcingApp.Services.Interfaces;
+using MyEcologicCrowsourcingApp.DTOs;
+using System.Security.Claims;
 
 namespace MyEcologicCrowsourcingApp.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class VehiculesController : Controller
+    public class OrganisationsController : Controller
     {
-        private readonly IVehiculeService _service;
+        private readonly IOrganisationService _organisationService;
+        private readonly IUserService _userService;
 
-        public VehiculesController(IVehiculeService service)
+        public OrganisationsController(IOrganisationService organisationService, IUserService userService)
         {
-            _service = service;
+            _organisationService = organisationService;
+            _userService = userService;
         }
 
         [HttpGet]
-        [AllowAnonymous]  
+        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
         {
-            var vehicules = await _service.GetAllAsync();
-            return Ok(vehicules);
+            var organisations = await _organisationService.GetAllAsync();
+            return Ok(organisations);
         }
 
         [HttpGet("{id:guid}")]
-        [AllowAnonymous]  
+        [AllowAnonymous]
         public async Task<IActionResult> GetById(Guid id)
         {
-            var vehicule = await _service.GetByIdAsync(id);
-            if (vehicule == null) return NotFound();
-            return Ok(vehicule);
+            var organisation = await _organisationService.GetByIdAsync(id);
+            if (organisation == null) return NotFound();
+            return Ok(organisation);
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]  
-        public async Task<IActionResult> Create(Vehicule vehicule)
+        [AllowAnonymous]
+        public async Task<IActionResult> Create([FromBody] CreateOrganisationDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var created = await _service.CreateAsync(vehicule);
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+            var existingUser = await _userService.GetByEmailAsync(dto.RepreEmail);
+            if (existingUser != null)
+                return BadRequest("Un utilisateur avec cet email existe déjà.");
+
+            var organisation = new Organisation
+            {
+                Nom = dto.Nom,
+                NbrVolontaires = dto.NbrVolontaires
+            };
+
+
+            var nouveauRepresentant = new User
+            {
+                UserId = Guid.NewGuid(),
+                Username = dto.RepreUsername,
+                Email = dto.RepreEmail,
+                Password = dto.ReprePassword,
+                Role = UserRole.Representant
+            };
+
+            var result = await _organisationService.CreateWithRepresentativeAsync(organisation, nouveauRepresentant);
+            if (result.Organisation == null)
+                return BadRequest("Erreur lors de la création de l'organisation.");
+
+
+            var response = new OrganisationCreationResponseDto
+            {
+                OrganisationId = result.Organisation.OrganisationId,
+                Nom = result.Organisation.Nom,
+                NbrVolontaires = result.Organisation.NbrVolontaires,
+                Token = result.Token
+            };
+
+            return Ok(response);
         }
 
         [HttpPut("{id:guid}")]
-        [Authorize(Roles = "Admin")]  
-        public async Task<IActionResult> Update(Guid id, Vehicule vehicule)
+        [Authorize]
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateOrganisationDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var updated = await _service.UpdateAsync(id, vehicule);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("Token utilisateur invalide.");
+
+            var userId = Guid.Parse(userIdClaim);
+            var user = await _userService.GetByIdAsync(userId);
+            if (user == null)
+                return Unauthorized("Utilisateur non trouvé.");
+
+            if (user.Role != UserRole.Admin && user.OrganisationId != id)
+                return StatusCode(403, "Vous n'êtes pas autorisé à modifier cette organisation.");
+
+            var organisation = new Organisation
+            {
+                OrganisationId = id,
+                Nom = dto.Nom!,
+                NbrVolontaires = dto.NbrVolontaires,
+                RepresentantId = user.Role == UserRole.Admin
+                    ? (await _organisationService.GetByIdAsync(id))?.RepresentantId ?? Guid.Empty
+                    : userId
+            };
+
+            var updated = await _organisationService.UpdateAsync(id, organisation);
             if (updated == null) return NotFound();
-            return Ok(updated);
+
+            var response = new OrganisationResponseDto
+            {
+                OrganisationId = updated.OrganisationId,
+                Nom = updated.Nom,
+                NbrVolontaires = updated.NbrVolontaires
+            };
+
+            return Ok(response);
         }
 
         [HttpDelete("{id:guid}")]
-        [Authorize(Roles = "Admin")]  
+        [Authorize]
         public async Task<IActionResult> Delete(Guid id)
         {
-            var deleted = await _service.DeleteAsync(id);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("Token utilisateur invalide.");
+
+            var userId = Guid.Parse(userIdClaim);
+            var user = await _userService.GetByIdAsync(userId);
+            if (user == null)
+                return Unauthorized("Utilisateur non trouvé.");
+
+            if (user.Role != UserRole.Admin && user.OrganisationId != id)
+                return StatusCode(403, "Vous n'êtes pas autorisé à supprimer cette organisation.");
+
+            var deleted = await _organisationService.DeleteAsync(id);
             if (!deleted) return NotFound();
             return NoContent();
         }

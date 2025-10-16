@@ -10,5 +10,6 @@ namespace MyEcologicCrowsourcingApp.Services.Interfaces
         Task<User?> UpdateAsync(Guid id, User user);
         Task<bool> DeleteAsync(Guid id);
         Task<User?> AuthenticateAsync(string email, string password);
+        Task<User?> GetByEmailAsync(string email);
     }
 }

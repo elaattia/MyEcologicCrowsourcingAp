@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyEcologicCrowsourcingApp.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyEcologicCrowsourcingApp.Migrations
 {
     [DbContext(typeof(EcologicDbContext))]
-    partial class EcologicDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251015220854_AjoutFlotteDynamique")]
+    partial class AjoutFlotteDynamique
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -168,15 +171,10 @@ namespace MyEcologicCrowsourcingApp.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<Guid?>("RepresentantId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid?>("VehiculeId")
                         .HasColumnType("uuid");
 
                     b.HasKey("OrganisationId");
-
-                    b.HasIndex("RepresentantId");
 
                     b.ToTable("Organisations");
                 });
@@ -261,9 +259,6 @@ namespace MyEcologicCrowsourcingApp.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<Guid?>("OrganisationId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasColumnType("text");
@@ -280,8 +275,6 @@ namespace MyEcologicCrowsourcingApp.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique();
-
-                    b.HasIndex("OrganisationId");
 
                     b.ToTable("Users");
                 });
@@ -375,16 +368,6 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.Navigation("OptimisationRequest");
                 });
 
-            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Organisation", b =>
-                {
-                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "Representant")
-                        .WithMany()
-                        .HasForeignKey("RepresentantId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Representant");
-                });
-
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.PointDechet", b =>
                 {
                     b.HasOne("MyEcologicCrowsourcingApp.Models.Itineraire", null)
@@ -405,16 +388,6 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.Navigation("NettoyeParOrganisation");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.User", b =>
-                {
-                    b.HasOne("MyEcologicCrowsourcingApp.Models.Organisation", "Organisation")
-                        .WithMany("Users")
-                        .HasForeignKey("OrganisationId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Organisation");
                 });
 
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Vehicule", b =>
@@ -438,8 +411,6 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.Navigation("Depots");
 
                     b.Navigation("Itineraires");
-
-                    b.Navigation("Users");
 
                     b.Navigation("Vehicules");
                 });
