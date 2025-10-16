@@ -1,3 +1,4 @@
+// DTOs/LoginDto.cs
 using System.ComponentModel.DataAnnotations;
 using MyEcologicCrowsourcingApp.Models;
 

@@ -1,3 +1,4 @@
+//Models/OptimisationRequest.cs
 namespace MyEcologicCrowsourcingApp.Models
 {
     public class OptimisationRequest

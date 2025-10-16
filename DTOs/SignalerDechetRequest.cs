@@ -1,3 +1,4 @@
+// DTOs/SignalerDechetRequest.cs
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 
@@ -14,7 +15,6 @@ namespace MyEcologicCrowsourcingApp.DTOs
         [Required]
         public string Longitude { get; set; } = string.Empty;
 
-        // Méthodes helper pour convertir en double
         public double GetLatitude()
         {
             return double.Parse(Latitude, CultureInfo.InvariantCulture);

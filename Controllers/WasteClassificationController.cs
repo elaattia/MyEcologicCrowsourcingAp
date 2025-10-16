@@ -1,3 +1,4 @@
+//Controllers/WasteClassificationController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
@@ -66,7 +67,7 @@ namespace MyEcologicCrowsourcingApp.Controllers
                     imageBytes = memoryStream.ToArray();
                 }
 
-                if (imageBytes.Length > 500 * 1024) // 500KB
+                if (imageBytes.Length > 500 * 1024) 
                 {
                     _logger.LogInformation("Compression de l'image de {Original}KB à optimiser",
                         imageBytes.Length / 1024);
@@ -75,7 +76,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
                         imageBytes.Length / 1024);
                 }
 
-                // 3. VÉRIFIER LE CACHE
                 var imageHash = ComputeHash(imageBytes);
                 var cacheKey = $"waste_classification_{imageHash}";
 
@@ -139,7 +139,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
 
                 var results = new List<WasteClassificationResponse>();
                 var semaphore = new SemaphoreSlim(3, 3); 
-                // Traitement parallèle avec limitation
                 var tasks = images.Select(async image =>
                 {
                     await semaphore.WaitAsync();
@@ -213,7 +212,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 var endTime = DateTime.UtcNow;
                 var totalTime = (endTime - startTime).TotalSeconds;
 
-                // Statistiques
                 var stats = new BatchClassificationResponse
                 {
                     TotalImages = images.Count,
@@ -421,17 +419,14 @@ namespace MyEcologicCrowsourcingApp.Controllers
                     throw new InvalidOperationException("Roboflow Model ID is not configured");
                 }
 
-                // Construire l'URL avec paramètres
                 string confidenceParam = _roboflowSettings.ConfidenceThreshold.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 string url = $"{_roboflowSettings.ApiEndpoint}?api_key={_roboflowSettings.ApiKey}&confidence={confidenceParam}";
 
                 _logger.LogInformation("Calling Roboflow API: {Url}", url.Replace(_roboflowSettings.ApiKey, "***"));
                 _logger.LogInformation("Image size: {Size} bytes", imageBytes.Length);
 
-                // CRITICAL: Roboflow serverless API requires base64-encoded image
                 string base64Image = Convert.ToBase64String(imageBytes);
                 
-                // Send as plain text with base64 content
                 using var content = new StringContent(base64Image, Encoding.UTF8, "text/plain");
 
                 var response = await client.PostAsync(url, content);

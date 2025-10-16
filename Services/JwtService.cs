@@ -1,3 +1,4 @@
+// Services/JwtService.cs
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -24,10 +25,11 @@ namespace MyEcologicCrowsourcingApp.Services
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Role, user.Role.ToString()),
+                new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()), 
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),           
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),   
+                new Claim(ClaimTypes.Name, user.Username),                     
+                new Claim(ClaimTypes.Role, user.Role.ToString()),               
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 

@@ -3906,23 +3906,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\noura\\.nuget\\packages\\": {},
+    "C:\\Users\\HP\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\noura\\Downloads\\projet dotnet cours\\MyEcologicCrowsourcingApp\\MyEcologicCrowsourcingApp.csproj",
+      "projectUniqueName": "C:\\Users\\HP\\Desktop\\projetDotnet\\MyEcologicCrowsourcingAp\\MyEcologicCrowsourcingApp.csproj",
       "projectName": "MyEcologicCrowsourcingApp",
-      "projectPath": "C:\\Users\\noura\\Downloads\\projet dotnet cours\\MyEcologicCrowsourcingApp\\MyEcologicCrowsourcingApp.csproj",
-      "packagesPath": "C:\\Users\\noura\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\noura\\Downloads\\projet dotnet cours\\MyEcologicCrowsourcingApp\\obj\\",
+      "projectPath": "C:\\Users\\HP\\Desktop\\projetDotnet\\MyEcologicCrowsourcingAp\\MyEcologicCrowsourcingApp.csproj",
+      "packagesPath": "C:\\Users\\HP\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\HP\\Desktop\\projetDotnet\\MyEcologicCrowsourcingAp\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\noura\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\HP\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],

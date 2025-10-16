@@ -1,3 +1,4 @@
+////Models/RoboflowSttings.cs
 using System.Text.Json.Serialization;
 
 namespace MyEcologicCrowsourcingApp.Models
@@ -12,7 +13,6 @@ namespace MyEcologicCrowsourcingApp.Models
         public string ApiEndpoint => $"https://detect.roboflow.com/{ModelId}/{Version}";
     }
 
-    // Réponse de classification
     public class WasteClassificationResponse
     {
         public string Category { get; set; } = string.Empty;
@@ -28,7 +28,6 @@ namespace MyEcologicCrowsourcingApp.Models
         public bool FromCache { get; set; } = false;
     }
 
-    // Détails d'une détection
     public class Detection
     {
         public string Class { get; set; } = string.Empty;
@@ -39,7 +38,6 @@ namespace MyEcologicCrowsourcingApp.Models
         public double Height { get; set; }
     }
 
-    // Réponse API Roboflow
     public class RoboflowApiResponse
     {
         [JsonPropertyName("time")]
@@ -85,7 +83,6 @@ namespace MyEcologicCrowsourcingApp.Models
         public int ClassId { get; set; }
     }
 
-    // Informations sur une catégorie
     public class CategoryInfo
     {
         public string Name { get; set; } = string.Empty;
@@ -94,7 +91,6 @@ namespace MyEcologicCrowsourcingApp.Models
         public string RecyclingInfo { get; set; } = string.Empty;
     }
 
-    // Réponse de classification batch
     public class BatchClassificationResponse
     {
         public int TotalImages { get; set; }

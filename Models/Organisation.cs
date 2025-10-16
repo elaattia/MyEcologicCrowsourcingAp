@@ -1,3 +1,4 @@
+//Models/Organisation.cs
 namespace MyEcologicCrowsourcingApp.Models
 {
     public class Organisation

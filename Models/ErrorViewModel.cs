@@ -1,3 +1,4 @@
+// Models/ErrorViewModel.cs
 namespace MyEcologicCrowsourcingApp.Models;
 
 public class ErrorViewModel

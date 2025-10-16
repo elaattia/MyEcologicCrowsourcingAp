@@ -1,3 +1,4 @@
+//Repositories/OrganisationRepository.cs
 using Microsoft.EntityFrameworkCore;
 using MyEcologicCrowsourcingApp.Models;
 using MyEcologicCrowsourcingApp.Repositories.Interfaces;
@@ -16,7 +17,7 @@ namespace MyEcologicCrowsourcingApp.Repositories
 
         public async Task<IEnumerable<Organisation>> GetAllAsync()
             => await _context.Organisations
-                .Include(o => o.Vehicule) // eager load vehicule if needed
+                .Include(o => o.Vehicule) 
                 .ToListAsync();
 
         public async Task<Organisation?> GetByIdAsync(Guid id)

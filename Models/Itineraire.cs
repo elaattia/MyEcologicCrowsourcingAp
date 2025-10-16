@@ -1,3 +1,4 @@
+// Models/Itineraire.cs
 namespace MyEcologicCrowsourcingApp.Models
 {
     public class Itineraire

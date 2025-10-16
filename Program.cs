@@ -1,3 +1,4 @@
+//Program.cs
 using MyEcologicCrowsourcingApp.Data;
 using MyEcologicCrowsourcingApp.Models;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,6 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuration JWT
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 
@@ -23,6 +23,19 @@ if (jwtSettings == null)
 builder.Services.Configure<RoboflowSettings>(
     builder.Configuration.GetSection("RoboflowSettings")
 );
+
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173", "http://localhost:5174") 
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
 
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddDbContext<EcologicDbContext>(options =>
@@ -53,7 +66,7 @@ builder.Services.AddAuthentication(options =>
 .AddJwtBearer(options =>
 {
     options.SaveToken = true;
-    options.RequireHttpsMetadata = false; // Mettre à true en production
+    options.RequireHttpsMetadata = false; 
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -66,7 +79,6 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
     
-    // Pour déboguer les erreurs d'authentification
     options.Events = new JwtBearerEvents
     {
         OnAuthenticationFailed = context =>
@@ -98,7 +110,6 @@ builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -110,12 +121,12 @@ else
 }
 
 app.UseStaticFiles();
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseRouting();
 
-// IMPORTANT: L'ordre est crucial
-app.UseAuthentication(); // D'abord l'authentification
-app.UseAuthorization();  // Ensuite l'autorisation
+app.UseCors("AllowLocalhost");
+app.UseAuthentication(); 
+app.UseAuthorization(); 
 
 app.MapStaticAssets();
 

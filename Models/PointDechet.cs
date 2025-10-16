@@ -1,3 +1,4 @@
+////Models/PonitDeche.cs
 using System.ComponentModel.DataAnnotations;
 
 namespace MyEcologicCrowsourcingApp.Models
@@ -23,7 +24,7 @@ namespace MyEcologicCrowsourcingApp.Models
         public Guid Id { get; set; }
         
         [Required]
-        public string Url { get; set; } = string.Empty; // URL de la photo
+        public string Url { get; set; } = string.Empty; 
         
         [Required]
         [Range(-90, 90)]

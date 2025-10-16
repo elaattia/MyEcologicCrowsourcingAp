@@ -1,3 +1,4 @@
+//Controllers/PointDechetsController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyEcologicCrowsourcingApp.Models;
@@ -152,7 +153,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
             return Ok(point);
         }
 
-        // Reverse Geocoding avec Nominatim (OpenStreetMap)
         private async Task<(string Zone, string Pays)> GetReverseGeocodingAsync(double latitude, double longitude)
         {
             using var httpClient = new HttpClient();

@@ -1,3 +1,4 @@
+//Models/JwtSettings.cs
 namespace MyEcologicCrowsourcingApp.Models
 {
     public class JwtSettings
