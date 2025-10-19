@@ -21,20 +21,23 @@ namespace MyEcologicCrowsourcingApp.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<PointDechetController> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly GeminiLangChainAgentFinal _geminiAgent;
+        private readonly GeminiSemanticKernelAgent _geminiAgent;
+        private readonly BackgroundRecommendationService _backgroundRecommendationService;
 
         public PointDechetController(
             EcologicDbContext context,
             IWebHostEnvironment env,
             ILogger<PointDechetController> logger,
             IHttpClientFactory httpClientFactory,
-            GeminiLangChainAgentFinal geminiAgent)
+            GeminiSemanticKernelAgent geminiAgent,
+    BackgroundRecommendationService backgroundRecommendationService)
         {
             _context = context;
             _env = env;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
             _geminiAgent = geminiAgent;
+            _backgroundRecommendationService = backgroundRecommendationService;
         }
 
         [HttpPost("signaler")]
@@ -85,7 +88,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
                     return BadRequest(new { message = "Longitude invalide (doit être entre -180 et 180)" });
                 }
 
-                // Validation de qualité d'image minimale
                 if (request.Image.Length < 10 * 1024)
                 {
                     _logger.LogWarning("Image trop petite: {Size}KB", request.Image.Length / 1024);
@@ -169,7 +171,7 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 var updatedPointDechet = await _context.PointDechets.FindAsync(pointDechet.Id);
 
                 // === ÉTAPE 2: Génération de recommandations écologiques avec Gemini ===
-                RecommandationEcologique? recommandation = null;
+                /*RecommandationEcologique? recommandation = null;
                 try
                 {
                     _logger.LogInformation("Démarrage de la génération de recommandations avec Gemini pour le déchet {Id}", pointDechet.Id);
@@ -197,7 +199,22 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Erreur lors de la génération de recommandations pour le déchet {Id}", pointDechet.Id);
+                }*/
+
+                try
+                {
+                    _logger.LogInformation("📬 Envoi du déchet {Id} pour génération de recommandation en arrière-plan", updatedPointDechet!.Id);
+                    
+                    // Envoyer à la file d'attente pour traitement asynchrone
+                    _backgroundRecommendationService.EnqueueRecommandation(updatedPointDechet.Id);
+                    
+                    _logger.LogInformation("✅ Déchet {Id} ajouté à la file de recommandations. Traitement en cours...", updatedPointDechet.Id);
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Erreur lors de l'ajout en file d'attente pour {Id}", updatedPointDechet!.Id);
+                }
+                RecommandationEcologique? recommandation = null;
 
                 return CreatedAtAction(nameof(GetPointDechet), new { id = pointDechet.Id }, new
                 {
@@ -227,6 +244,7 @@ namespace MyEcologicCrowsourcingApp.Controllers
                         justification = recommandation.Justification,
                         dateGeneration = recommandation.DateGeneration
                     } : null,
+                    recommandationEnCours = true,
                     message = GenerateSuccessMessage(updatedPointDechet, classificationResult, recommandation)
                 });
             }
@@ -237,9 +255,36 @@ namespace MyEcologicCrowsourcingApp.Controllers
             }
         }
 
-        /// <summary>
-        /// Construit le contexte nécessaire pour générer une recommandation écologique
-        /// </summary>
+        [HttpGet("{id}/check-recommandation")]
+        public async Task<IActionResult> CheckRecommandation(Guid id)
+        {
+            var recommandation = await _context.RecommandationsEcologiques
+                .Where(r => r.PointDechetId == id && r.EstActive)
+                .OrderByDescending(r => r.DateGeneration)
+                .FirstOrDefaultAsync();
+
+            if (recommandation == null)
+            {
+                return Ok(new { 
+                    status = "en_cours", 
+                    message = "Recommandation en cours de génération",
+                    pointDechetId = id
+                });
+            }
+
+            return Ok(new { 
+                status = "pret", 
+                recommandation = new
+                {
+                    id = recommandation.Id,
+                    scorePriorite = recommandation.ScorePriorite,
+                    urgence = recommandation.Urgence,
+                    actionRecommandee = recommandation.ActionRecommandee,
+                    justification = recommandation.Justification,
+                    dateGeneration = recommandation.DateGeneration
+                }
+            });
+        }
         private async Task<ContexteRecommandation> ConstruireContexteRecommandationAsync(PointDechet pointDechet)
         {
             // Calculer le nombre de déchets proches (rayon de 5km environ)

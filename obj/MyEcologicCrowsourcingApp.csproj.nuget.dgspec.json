@@ -66,17 +66,9 @@
               "target": "Package",
               "version": "[9.14.6206, )"
             },
-            "LangChain": {
-              "target": "Package",
-              "version": "[0.15.3, )"
-            },
             "LangChain.Core": {
               "target": "Package",
-              "version": "[0.15.3, )"
-            },
-            "LangChain.Providers.Google": {
-              "target": "Package",
-              "version": "[0.15.3, )"
+              "version": "[0.16.0, )"
             },
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",
@@ -91,6 +83,14 @@
             "Microsoft.Extensions.Http": {
               "target": "Package",
               "version": "[9.0.9, )"
+            },
+            "Microsoft.SemanticKernel": {
+              "target": "Package",
+              "version": "[1.66.0, )"
+            },
+            "Microsoft.SemanticKernel.Connectors.Google": {
+              "target": "Package",
+              "version": "[1.66.0-alpha, )"
             },
             "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",

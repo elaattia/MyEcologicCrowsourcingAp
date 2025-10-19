@@ -11,15 +11,15 @@
     <PackageReference Include="DotnetGeminiSDK" Version="2.0.0" />
     <PackageReference Include="Google.Cloud.AIPlatform.V1" Version="3.8.0" />
     <PackageReference Include="Google.OrTools" Version="9.14.6206" />
-    <PackageReference Include="LangChain" Version="0.15.3" />
-    <PackageReference Include="LangChain.Core" Version="0.15.3" />
-    <PackageReference Include="LangChain.Providers.Google" Version="0.15.3" />
+    <PackageReference Include="LangChain.Core" Version="0.16.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.9" />
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.66.0" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Google" Version="1.66.0-alpha" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />

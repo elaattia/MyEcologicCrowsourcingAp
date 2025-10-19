@@ -55,8 +55,10 @@ builder.Services.AddHttpClient("Roboflow", client =>
 builder.Services.AddHttpClient(); // Pour les appels OSRM
 builder.Services.AddScoped<VRPOptimisationService>();
 
-builder.Services.AddHttpClient<GeminiLangChainAgentFinal>();
-builder.Services.AddScoped<GeminiLangChainAgentFinal>();
+builder.Services.AddScoped<GeminiSemanticKernelAgent>();
+
+builder.Services.AddSingleton<BackgroundRecommendationService>();
+builder.Services.AddHostedService(provider => provider.GetRequiredService<BackgroundRecommendationService>());
 
 builder.Services.AddMemoryCache();
 
@@ -117,6 +119,12 @@ builder.Services.AddControllers()
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
+
+builder.Services.AddHttpClient("GoogleProvider", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Add("User-Agent", "MyEcologicApp/1.0");
+});
 
 var app = builder.Build();
 
