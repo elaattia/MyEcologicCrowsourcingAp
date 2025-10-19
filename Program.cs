@@ -13,6 +13,8 @@ using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.Configure<GeminiSettings>(builder.Configuration.GetSection("GeminiSettings"));
+
 // IMPORTANT: Désactiver le mapping automatique des claims JWT
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
@@ -53,6 +55,9 @@ builder.Services.AddHttpClient("Roboflow", client =>
 builder.Services.AddHttpClient(); // Pour les appels OSRM
 builder.Services.AddScoped<VRPOptimisationService>();
 
+builder.Services.AddHttpClient<GeminiLangChainAgentFinal>();
+builder.Services.AddScoped<GeminiLangChainAgentFinal>();
+
 builder.Services.AddMemoryCache();
 
 builder.Services.AddAuthentication(options =>
@@ -64,7 +69,7 @@ builder.Services.AddAuthentication(options =>
 .AddJwtBearer(options =>
 {
     options.SaveToken = true;
-    options.RequireHttpsMetadata = false; 
+    options.RequireHttpsMetadata = false;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -76,7 +81,7 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
         ClockSkew = TimeSpan.Zero
     };
-    
+
     options.Events = new JwtBearerEvents
     {
         OnAuthenticationFailed = context =>
@@ -89,13 +94,13 @@ builder.Services.AddAuthentication(options =>
         {
             var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
             logger.LogInformation("Token validé avec succès");
-            
+
             var claims = context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}");
             if (claims != null)
             {
                 logger.LogInformation("Claims: {Claims}", string.Join(", ", claims));
             }
-            
+
             return Task.CompletedTask;
         }
     };

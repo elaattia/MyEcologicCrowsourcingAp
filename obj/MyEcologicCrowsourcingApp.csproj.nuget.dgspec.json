@@ -54,9 +54,29 @@
               "target": "Package",
               "version": "[4.0.3, )"
             },
+            "DotnetGeminiSDK": {
+              "target": "Package",
+              "version": "[2.0.0, )"
+            },
+            "Google.Cloud.AIPlatform.V1": {
+              "target": "Package",
+              "version": "[3.8.0, )"
+            },
             "Google.OrTools": {
               "target": "Package",
               "version": "[9.14.6206, )"
+            },
+            "LangChain": {
+              "target": "Package",
+              "version": "[0.15.3, )"
+            },
+            "LangChain.Core": {
+              "target": "Package",
+              "version": "[0.15.3, )"
+            },
+            "LangChain.Providers.Google": {
+              "target": "Package",
+              "version": "[0.15.3, )"
             },
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",

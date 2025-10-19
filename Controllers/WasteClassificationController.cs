@@ -36,6 +36,7 @@ namespace MyEcologicCrowsourcingApp.Controllers
         private const int COMPRESSED_IMAGE_MAX_WIDTH = 1024;
         private const int COMPRESSED_IMAGE_MAX_HEIGHT = 1024;
         private const int JPEG_QUALITY = 85;
+        private const double MIN_VALID_CONFIDENCE = 0.1; // Seuil minimum pour considérer un résultat valide
 
         public WasteClassificationController(
             ILogger<WasteClassificationController> logger,
@@ -70,7 +71,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
                     return BadRequest(new { error = "ID du point de déchet invalide" });
                 }
 
-                // Récupérer le point de déchet depuis la base de données
                 var pointDechet = await _context.PointDechets.FindAsync(request.PointDechetId);
 
                 if (pointDechet == null)
@@ -81,57 +81,76 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 _logger.LogInformation("Classification du déchet {Id} avec l'image {Url}",
                     pointDechet.Id, pointDechet.Url);
 
-                // Construire le chemin complet de l'image
                 var imagePath = Path.Combine(_env.WebRootPath, pointDechet.Url.TrimStart('/'));
 
                 if (!System.IO.File.Exists(imagePath))
                 {
+                    _logger.LogError("Image non trouvée: {Path}", imagePath);
                     return BadRequest(new { error = "Image non trouvée sur le serveur" });
                 }
 
-                // Lire l'image depuis le disque
                 byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(imagePath);
-
                 _logger.LogInformation("Image chargée: {Size} bytes", imageBytes.Length);
 
-                // Compression si nécessaire
-                if (imageBytes.Length > 500 * 1024) // 500KB
+                if (imageBytes.Length > 500 * 1024)
                 {
-                    _logger.LogInformation("Compression de l'image de {Original}KB",
-                        imageBytes.Length / 1024);
+                    _logger.LogInformation("Compression de l'image de {Original}KB", imageBytes.Length / 1024);
                     imageBytes = await CompressImageAsync(imageBytes);
-                    _logger.LogInformation("Image compressée à {Compressed}KB",
-                        imageBytes.Length / 1024);
+                    _logger.LogInformation("Image compressée à {Compressed}KB", imageBytes.Length / 1024);
                 }
 
-                // Vérifier le cache
                 var imageHash = ComputeHash(imageBytes);
                 var cacheKey = $"waste_classification_{imageHash}";
 
                 WasteClassificationResponse result;
+                bool usedCache = false;
 
-                if (_cache.TryGetValue<WasteClassificationResponse>(cacheKey, out var cachedResult) && cachedResult != null)
+                // Vérifier le cache ET la validité du résultat en cache
+                if (_cache.TryGetValue<WasteClassificationResponse>(cacheKey, out var cachedResult) && 
+                    cachedResult != null && 
+                    IsValidCachedResult(cachedResult))
                 {
-                    _logger.LogInformation("Résultat récupéré du cache pour {Hash}", imageHash);
+                    _logger.LogInformation("Résultat VALIDE récupéré du cache pour {Hash}", imageHash);
                     result = cachedResult;
                     result.FromCache = true;
+                    usedCache = true;
                 }
                 else
                 {
+                    if (cachedResult != null && !IsValidCachedResult(cachedResult))
+                    {
+                        _logger.LogWarning("Résultat en cache INVALIDE (confidence: {Confidence}), appel à l'API Roboflow", 
+                            cachedResult.Confidence);
+                        _cache.Remove(cacheKey); // Nettoyer le cache invalide
+                    }
+
                     // Appeler l'API Roboflow
+                    _logger.LogInformation("Appel à l'API Roboflow pour classification");
                     var roboflowResponse = await CallRoboflowAPI(imageBytes, "image/jpeg");
+                    
                     result = MapToWasteCategories(roboflowResponse);
                     result.FromCache = false;
 
-                    // Mettre en cache
-                    var cacheOptions = new MemoryCacheEntryOptions()
-                        .SetAbsoluteExpiration(TimeSpan.FromHours(CACHE_DURATION_HOURS))
-                        .SetSize(1);
-                    _cache.Set(cacheKey, result, cacheOptions);
+                    // Mettre en cache SEULEMENT si le résultat est valide
+                    if (IsValidCachedResult(result))
+                    {
+                        var cacheOptions = new MemoryCacheEntryOptions()
+                            .SetAbsoluteExpiration(TimeSpan.FromHours(CACHE_DURATION_HOURS))
+                            .SetSize(1);
+                        _cache.Set(cacheKey, result, cacheOptions);
+                        _logger.LogInformation("Résultat mis en cache avec confidence {Confidence}", result.Confidence);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Résultat non mis en cache car confidence trop faible: {Confidence}", 
+                            result.Confidence);
+                    }
                 }
 
-                // Mettre à jour le type de déchet dans la base de données
-                if (result.Success && !string.IsNullOrEmpty(result.Category))
+                // Mettre à jour le type de déchet UNIQUEMENT si la classification est valide
+                if (result.Success && 
+                    !string.IsNullOrEmpty(result.Category) && 
+                    result.Confidence > MIN_VALID_CONFIDENCE)
                 {
                     TypeDechet typeDechet = MapCategoryToTypeDechet(result.Category);
                     pointDechet.Type = typeDechet;
@@ -139,14 +158,19 @@ namespace MyEcologicCrowsourcingApp.Controllers
                     _context.PointDechets.Update(pointDechet);
                     await _context.SaveChangesAsync();
 
-                    _logger.LogInformation("Type de déchet mis à jour: {Type} pour le point {Id}",
-                        typeDechet, pointDechet.Id);
+                    _logger.LogInformation("Type de déchet mis à jour: {Type} pour le point {Id} (confidence: {Confidence})",
+                        typeDechet, pointDechet.Id, result.Confidence);
+                }
+                else
+                {
+                    _logger.LogWarning("Type de déchet NON mis à jour pour {Id} - Confidence trop faible ou erreur: {Confidence}", 
+                        pointDechet.Id, result.Confidence);
                 }
 
                 result.FileName = Path.GetFileName(pointDechet.Url);
 
-                _logger.LogInformation("Classification réussie: {Category} avec {Confidence}% de confiance",
-                    result.Category, result.Confidence * 100);
+                _logger.LogInformation("Classification terminée: {Category} avec {Confidence}% de confiance (cache: {Cache})",
+                    result.Category, result.Confidence * 100, usedCache);
 
                 return Ok(result);
             }
@@ -154,7 +178,7 @@ namespace MyEcologicCrowsourcingApp.Controllers
             {
                 _logger.LogError(ex, "Erreur lors de l'appel à l'API Roboflow");
                 return StatusCode(StatusCodes.Status503ServiceUnavailable,
-                    new { error = "Service de classification temporairement indisponible" });
+                    new { error = "Service de classification temporairement indisponible", details = ex.Message });
             }
             catch (Exception ex)
             {
@@ -165,284 +189,31 @@ namespace MyEcologicCrowsourcingApp.Controllers
         }
 
         /// <summary>
-        /// Ancien endpoint de classification avec upload d'image (conservé pour compatibilité)
+        /// Vérifie si un résultat en cache est valide (pas vide, pas d'erreur, confidence suffisante)
         /// </summary>
-        [HttpPost("classify-upload")]
-        [Consumes("multipart/form-data")]
-        [ProducesResponseType(typeof(WasteClassificationResponse), StatusCodes.Status200OK)]
-        public async Task<IActionResult> ClassifyWasteUpload([FromForm] IFormFile image)
+        private bool IsValidCachedResult(WasteClassificationResponse cachedResult)
         {
-            try
-            {
-                var validationError = ValidateImage(image);
-                if (validationError != null)
-                    return BadRequest(new { error = validationError.Error });
-
-                _logger.LogInformation("Classification d'une image uploadée: {FileName}, Taille: {Size} bytes",
-                    image.FileName, image.Length);
-
-                byte[] imageBytes;
-                using (var memoryStream = new MemoryStream())
-                {
-                    await image.CopyToAsync(memoryStream);
-                    imageBytes = memoryStream.ToArray();
-                }
-
-                if (imageBytes.Length > 500 * 1024)
-                {
-                    imageBytes = await CompressImageAsync(imageBytes);
-                }
-
-                var imageHash = ComputeHash(imageBytes);
-                var cacheKey = $"waste_classification_{imageHash}";
-
-                if (_cache.TryGetValue<WasteClassificationResponse>(cacheKey, out var cachedResult) && cachedResult != null)
-                {
-                    cachedResult.FromCache = true;
-                    return Ok(cachedResult);
-                }
-
-                var roboflowResponse = await CallRoboflowAPI(imageBytes, image.ContentType);
-                var result = MapToWasteCategories(roboflowResponse);
-                result.FromCache = false;
-                result.FileName = image.FileName;
-
-                var cacheOptions = new MemoryCacheEntryOptions()
-                    .SetAbsoluteExpiration(TimeSpan.FromHours(CACHE_DURATION_HOURS))
-                    .SetSize(1);
-                _cache.Set(cacheKey, result, cacheOptions);
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur lors de la classification");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { error = "Erreur interne du serveur" });
-            }
-        }
-
-        [HttpPost("classify-batch")]
-        [Consumes("multipart/form-data")]
-        [ProducesResponseType(typeof(BatchClassificationResponse), StatusCodes.Status200OK)]
-        public async Task<IActionResult> ClassifyWasteBatch([FromForm] List<IFormFile> images)
-        {
-            var startTime = DateTime.UtcNow;
-
-            try
-            {
-                if (images == null || images.Count == 0)
-                {
-                    return BadRequest(new { error = "Aucune image fournie" });
-                }
-
-                if (images.Count > MAX_BATCH_SIZE)
-                {
-                    return BadRequest(new { error = $"Maximum {MAX_BATCH_SIZE} images par batch" });
-                }
-
-                _logger.LogInformation("Classification batch de {Count} images", images.Count);
-
-                var results = new List<WasteClassificationResponse>();
-                var semaphore = new SemaphoreSlim(3, 3);
-
-                var tasks = images.Select(async image =>
-                {
-                    await semaphore.WaitAsync();
-                    try
-                    {
-                        var validationError = ValidateImage(image);
-                        if (validationError != null)
-                        {
-                            return new WasteClassificationResponse
-                            {
-                                FileName = image.FileName ?? "unknown",
-                                Success = false,
-                                ErrorMessage = validationError.Error
-                            };
-                        }
-
-                        byte[] imageBytes;
-                        using (var memoryStream = new MemoryStream())
-                        {
-                            await image.CopyToAsync(memoryStream);
-                            imageBytes = memoryStream.ToArray();
-                        }
-
-                        if (imageBytes.Length > 500 * 1024)
-                        {
-                            imageBytes = await CompressImageAsync(imageBytes);
-                        }
-
-                        var imageHash = ComputeHash(imageBytes);
-                        var cacheKey = $"waste_classification_{imageHash}";
-
-                        if (_cache.TryGetValue<WasteClassificationResponse>(cacheKey, out var cachedResult) && cachedResult != null)
-                        {
-                            cachedResult.FileName = image.FileName ?? "unknown";
-                            cachedResult.FromCache = true;
-                            return cachedResult;
-                        }
-
-                        var roboflowResponse = await CallRoboflowAPI(imageBytes, image.ContentType);
-                        var result = MapToWasteCategories(roboflowResponse);
-                        result.FileName = image.FileName;
-                        result.FromCache = false;
-
-                        var cacheOptions = new MemoryCacheEntryOptions()
-                            .SetAbsoluteExpiration(TimeSpan.FromHours(CACHE_DURATION_HOURS))
-                            .SetSize(1);
-                        _cache.Set(cacheKey, result, cacheOptions);
-
-                        await Task.Delay(RATE_LIMIT_DELAY_MS);
-
-                        return result;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Erreur lors de la classification de {FileName}", image.FileName);
-                        return new WasteClassificationResponse
-                        {
-                            FileName = image.FileName,
-                            Success = false,
-                            ErrorMessage = ex.Message
-                        };
-                    }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
-                });
-
-                results = (await Task.WhenAll(tasks)).ToList();
-
-                var endTime = DateTime.UtcNow;
-                var totalTime = (endTime - startTime).TotalSeconds;
-
-                var stats = new BatchClassificationResponse
-                {
-                    TotalImages = images.Count,
-                    SuccessCount = results.Count(r => r.Success),
-                    FailureCount = results.Count(r => !r.Success),
-                    CachedCount = results.Count(r => r.FromCache),
-                    TotalProcessingTime = totalTime,
-                    Results = results,
-                    CategoryStatistics = results
-                        .Where(r => r.Success)
-                        .GroupBy(r => r.Category)
-                        .ToDictionary(g => g.Key, g => g.Count())
-                };
-
-                _logger.LogInformation("Batch terminé: {Success}/{Total} réussies en {Time}s",
-                    stats.SuccessCount, stats.TotalImages, totalTime);
-
-                return Ok(stats);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur lors de la classification batch");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { error = "Erreur interne du serveur" });
-            }
-        }
-
-        [HttpGet("cache-stats")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult GetCacheStatistics()
-        {
-            var stats = new
-            {
-                cacheEnabled = true,
-                cacheDuration = $"{CACHE_DURATION_HOURS} hours",
-                message = "Le cache est actif. Les images identiques sont servies depuis le cache."
-            };
-
-            return Ok(stats);
+            return cachedResult.Success && 
+                   !string.IsNullOrEmpty(cachedResult.Category) && 
+                   cachedResult.Confidence >= MIN_VALID_CONFIDENCE;
         }
 
         [HttpPost("clear-cache")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult ClearCache()
+        public IActionResult ClearCache([FromQuery] string? imageHash = null)
         {
-            _logger.LogInformation("Demande de vidage du cache");
-            return Ok(new { message = "Cache vidé (les entrées expireront naturellement)" });
-        }
-
-        [HttpGet("categories")]
-        [ProducesResponseType(typeof(List<CategoryInfo>), StatusCodes.Status200OK)]
-        public IActionResult GetCategories()
-        {
-            var categories = new List<CategoryInfo>
+            if (!string.IsNullOrEmpty(imageHash))
             {
-                new CategoryInfo
-                {
-                    Name = "Plastique",
-                    Description = "Bouteilles, sacs, objets en plastique",
-                    RoboflowClasses = new[] { "bottles", "plastic-bags", "plastic-items", "styrofoam" },
-                    RecyclingInfo = "Recyclable dans la poubelle jaune"
-                },
-                new CategoryInfo
-                {
-                    Name = "Verre",
-                    Description = "Bouteilles et objets en verre",
-                    RoboflowClasses = new[] { "glass" },
-                    RecyclingInfo = "Recyclable dans les conteneurs à verre"
-                },
-                new CategoryInfo
-                {
-                    Name = "Metale",
-                    Description = "Canettes, objets métalliques",
-                    RoboflowClasses = new[] { "cans", "metal", "spoons" },
-                    RecyclingInfo = "Recyclable dans la poubelle jaune"
-                },
-                new CategoryInfo
-                {
-                    Name = "Pile",
-                    Description = "Batteries, piles, câbles, déchets électroniques",
-                    RoboflowClasses = new[] { "e-waste", "cables" },
-                    RecyclingInfo = "À déposer dans les points de collecte spécialisés"
-                },
-                new CategoryInfo
-                {
-                    Name = "Papier",
-                    Description = "Papier, carton",
-                    RoboflowClasses = new[] { "paper", "carton" },
-                    RecyclingInfo = "Recyclable dans la poubelle bleue"
-                },
-                new CategoryInfo
-                {
-                    Name = "Autre",
-                    Description = "Déchets organiques et autres",
-                    RoboflowClasses = new[] { "organic-waste", "phone-cases", "wood-waste", "yoga-mats", "trash" },
-                    RecyclingInfo = "Vérifier les instructions locales"
-                }
-            };
-
-            return Ok(categories);
-        }
-
-        [HttpGet("health")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult HealthCheck()
-        {
-            var health = new
+                var cacheKey = $"waste_classification_{imageHash}";
+                _cache.Remove(cacheKey);
+                _logger.LogInformation("Cache vidé pour l'image: {Hash}", imageHash);
+                return Ok(new { message = $"Cache vidé pour l'image {imageHash}" });
+            }
+            else
             {
-                status = "healthy",
-                service = "Roboflow Waste Detection 2.0",
-                apiConfigured = !string.IsNullOrEmpty(_roboflowSettings.ApiKey),
-                cacheEnabled = true,
-                compressionEnabled = true,
-                timestamp = DateTime.UtcNow,
-                configuration = new
-                {
-                    maxImageSizeMB = MAX_IMAGE_SIZE_MB,
-                    maxBatchSize = MAX_BATCH_SIZE,
-                    cacheExpirationHours = CACHE_DURATION_HOURS,
-                    compressionThresholdKB = 500
-                }
-            };
-
-            return Ok(health);
+                _logger.LogInformation("Demande de vidage complet du cache");
+                return Ok(new { message = "Pour vider le cache complet, redémarrez l'application. Pour vider une image spécifique, passez le paramètre imageHash." });
+            }
         }
 
         private ValidationError? ValidateImage(IFormFile image)
@@ -514,6 +285,7 @@ namespace MyEcologicCrowsourcingApp.Controllers
             try
             {
                 var client = _httpClientFactory.CreateClient("Roboflow");
+                client.Timeout = TimeSpan.FromSeconds(30); // Augmenter le timeout
 
                 if (string.IsNullOrEmpty(_roboflowSettings.ApiKey))
                 {
@@ -525,16 +297,22 @@ namespace MyEcologicCrowsourcingApp.Controllers
                     throw new InvalidOperationException("Roboflow Model ID is not configured");
                 }
 
+                // Construire l'URL complète de l'API
+                string apiUrl = $"https://detect.roboflow.com/{_roboflowSettings.ModelId}/{_roboflowSettings.Version}";
                 string confidenceParam = _roboflowSettings.ConfidenceThreshold.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                string url = $"{_roboflowSettings.ApiEndpoint}?api_key={_roboflowSettings.ApiKey}&confidence={confidenceParam}";
+                string url = $"{apiUrl}?api_key={_roboflowSettings.ApiKey}&confidence={confidenceParam}";
 
-                _logger.LogInformation("Calling Roboflow API: {Url}", url.Replace(_roboflowSettings.ApiKey, "***"));
+                _logger.LogInformation("Appel Roboflow API: {Model} (confidence: {Conf})", 
+                    _roboflowSettings.ModelId, confidenceParam);
 
                 string base64Image = Convert.ToBase64String(imageBytes);
                 using var content = new StringContent(base64Image, Encoding.UTF8, "text/plain");
 
                 var response = await client.PostAsync(url, content);
                 var responseContent = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation("Réponse Roboflow: Status={Status}, Content={Content}", 
+                    response.StatusCode, responseContent);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -547,7 +325,7 @@ namespace MyEcologicCrowsourcingApp.Controllers
                         return await CallRoboflowAPI(imageBytes, contentType, retryCount + 1);
                     }
 
-                    throw new HttpRequestException($"Erreur API Roboflow: {response.StatusCode}");
+                    throw new HttpRequestException($"Erreur API Roboflow: {response.StatusCode} - {responseContent}");
                 }
 
                 var result = JsonSerializer.Deserialize<RoboflowApiResponse>(responseContent, new JsonSerializerOptions
@@ -574,12 +352,13 @@ namespace MyEcologicCrowsourcingApp.Controllers
         {
             if (roboflowResponse?.Predictions == null || roboflowResponse.Predictions.Count == 0)
             {
+                _logger.LogWarning("Aucune prédiction retournée par Roboflow");
                 return new WasteClassificationResponse
                 {
                     Category = "Autre",
                     Confidence = 0.0,
                     Success = true,
-                    Message = "Aucun objet détecté dans l'image"
+                    Message = "Aucun déchet détecté dans l'image. Assurez-vous que l'image contient un déchet visible et de bonne qualité."
                 };
             }
 
@@ -587,8 +366,12 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 .OrderByDescending(p => p.Confidence)
                 .First();
 
+            _logger.LogInformation("Meilleure prédiction: {Class} avec {Confidence}% de confiance", 
+                bestPrediction.Class, bestPrediction.Confidence * 100);
+
             var categoryMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
+                { "Plastics", "Plastique" },
                 { "bottles", "Plastique" },
                 { "plastic-bags", "Plastique" },
                 { "plastic-items", "Plastique" },
@@ -644,9 +427,26 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 _ => TypeDechet.Autre
             };
         }
+
+        [HttpGet("health")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public IActionResult HealthCheck()
+        {
+            var health = new
+            {
+                status = "healthy",
+                service = "Roboflow Waste Detection",
+                apiConfigured = !string.IsNullOrEmpty(_roboflowSettings.ApiKey),
+                modelId = _roboflowSettings.ModelId,
+                confidenceThreshold = _roboflowSettings.ConfidenceThreshold,
+                cacheEnabled = true,
+                timestamp = DateTime.UtcNow
+            };
+
+            return Ok(health);
+        }
     }
 
-    // Nouvelle classe de requête pour la classification
     public class ClassifyWasteRequest
     {
         public Guid PointDechetId { get; set; }

@@ -50,11 +50,14 @@ namespace MyEcologicCrowsourcingApp.Models
         public string Pays { get; set; } = string.Empty;
 
         public double? VolumeEstime { get; set; }
-        
+
         public Guid? NettoyeParOrganisationId { get; set; }
         public Organisation? NettoyeParOrganisation { get; set; }
         public DateTime? DateNettoyage { get; set; }
         public Guid? ItineraireId { get; set; }
+        
+        
+        public ICollection<RecommandationEcologique> Recommandations { get; set; } = new List<RecommandationEcologique>();
 
     }
 }

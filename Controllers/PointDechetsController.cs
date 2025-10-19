@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
+using MyEcologicCrowsourcingApp.Services;
 
 namespace MyEcologicCrowsourcingApp.Controllers
 {
@@ -20,17 +21,20 @@ namespace MyEcologicCrowsourcingApp.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<PointDechetController> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly GeminiLangChainAgentFinal _geminiAgent;
 
         public PointDechetController(
             EcologicDbContext context,
             IWebHostEnvironment env,
             ILogger<PointDechetController> logger,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            GeminiLangChainAgentFinal geminiAgent)
         {
             _context = context;
             _env = env;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
+            _geminiAgent = geminiAgent;
         }
 
         [HttpPost("signaler")]
@@ -79,6 +83,15 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 if (longitude < -180 || longitude > 180)
                 {
                     return BadRequest(new { message = "Longitude invalide (doit être entre -180 et 180)" });
+                }
+
+                // Validation de qualité d'image minimale
+                if (request.Image.Length < 10 * 1024)
+                {
+                    _logger.LogWarning("Image trop petite: {Size}KB", request.Image.Length / 1024);
+                    return BadRequest(new { 
+                        message = "L'image est trop petite (moins de 10KB). Veuillez utiliser une image de meilleure qualité pour une classification optimale." 
+                    });
                 }
 
                 var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "dechets");
@@ -130,6 +143,7 @@ namespace MyEcologicCrowsourcingApp.Controllers
 
                 _logger.LogInformation("Déchet signalé avec succès: {Id}", pointDechet.Id);
 
+                // === ÉTAPE 1: Classification automatique ===
                 WasteClassificationResponse? classificationResult = null;
                 try
                 {
@@ -151,7 +165,39 @@ namespace MyEcologicCrowsourcingApp.Controllers
                     _logger.LogError(ex, "Erreur lors de la classification automatique du déchet {Id}. Le déchet reste signalé sans type.", pointDechet.Id);
                 }
 
+                // Recharger le point de déchet après classification
                 var updatedPointDechet = await _context.PointDechets.FindAsync(pointDechet.Id);
+
+                // === ÉTAPE 2: Génération de recommandations écologiques avec Gemini ===
+                RecommandationEcologique? recommandation = null;
+                try
+                {
+                    _logger.LogInformation("Démarrage de la génération de recommandations avec Gemini pour le déchet {Id}", pointDechet.Id);
+                    
+                    // Construire le contexte pour Gemini
+                    var contexte = await ConstruireContexteRecommandationAsync(updatedPointDechet!);
+                    
+                    // Appeler l'agent Gemini
+                    recommandation = await _geminiAgent.GenererRecommandationAsync(contexte);
+                    
+                    if (recommandation != null && recommandation.EstActive)
+                    {
+                        // Sauvegarder la recommandation dans la base de données
+                        _context.RecommandationsEcologiques.Add(recommandation);
+                        await _context.SaveChangesAsync();
+                        
+                        _logger.LogInformation("Recommandation écologique générée avec succès pour le déchet {Id}: {Action}", 
+                            pointDechet.Id, recommandation.ActionRecommandee);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("La génération de recommandation a échoué pour le déchet {Id}", pointDechet.Id);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Erreur lors de la génération de recommandations pour le déchet {Id}", pointDechet.Id);
+                }
 
                 return CreatedAtAction(nameof(GetPointDechet), new { id = pointDechet.Id }, new
                 {
@@ -172,9 +218,16 @@ namespace MyEcologicCrowsourcingApp.Controllers
                         detectedObjects = classificationResult.DetectedObjects,
                         fromCache = classificationResult.FromCache
                     } : null,
-                    message = updatedPointDechet.Type.HasValue
-                        ? $"Déchet signalé et classifié automatiquement comme {updatedPointDechet.Type}!"
-                        : "Déchet signalé avec succès! La classification automatique n'a pas pu déterminer le type."
+                    recommandation = recommandation != null ? new
+                    {
+                        id = recommandation.Id,
+                        scorePriorite = recommandation.ScorePriorite,
+                        urgence = recommandation.Urgence,
+                        actionRecommandee = recommandation.ActionRecommandee,
+                        justification = recommandation.Justification,
+                        dateGeneration = recommandation.DateGeneration
+                    } : null,
+                    message = GenerateSuccessMessage(updatedPointDechet, classificationResult, recommandation)
                 });
             }
             catch (Exception ex)
@@ -184,14 +237,194 @@ namespace MyEcologicCrowsourcingApp.Controllers
             }
         }
 
+        /// <summary>
+        /// Construit le contexte nécessaire pour générer une recommandation écologique
+        /// </summary>
+        private async Task<ContexteRecommandation> ConstruireContexteRecommandationAsync(PointDechet pointDechet)
+        {
+            // Calculer le nombre de déchets proches (rayon de 5km environ)
+            const double rayonKm = 5.0;
+            const double degresParKm = 1.0 / 111.0; // Approximation simple
+            var rayonDegres = rayonKm * degresParKm;
+
+            var dechetsProches = await _context.PointDechets
+                .Where(p => p.Id != pointDechet.Id &&
+                           Math.Abs(p.Latitude - pointDechet.Latitude) < rayonDegres &&
+                           Math.Abs(p.Longitude - pointDechet.Longitude) < rayonDegres)
+                .CountAsync();
+
+            // Récupérer l'historique des nettoyages dans la zone (6 derniers mois)
+            var dateDebut = DateTime.UtcNow.AddMonths(-6);
+            var historiqueNettoyages = await _context.PointDechets
+                .Where(p => p.Zone == pointDechet.Zone &&
+                           p.Statut == StatutDechet.Nettoye &&
+                           p.DateNettoyage.HasValue &&
+                           p.DateNettoyage.Value >= dateDebut)
+                .Select(p => p.DateNettoyage!.Value)
+                .ToListAsync();
+
+            var organisationActive = await _context.Organisations
+                .Include(o => o.Depots)
+                .AnyAsync(o => o.Depots.Any(d =>
+                    Math.Abs(d.Latitude - pointDechet.Latitude) < rayonDegres &&
+                    Math.Abs(d.Longitude - pointDechet.Longitude) < rayonDegres));
+
+
+            // Déterminer la saison actuelle
+            var saison = DeterminerSaison(DateTime.UtcNow);
+
+            // Estimer le volume si non défini
+            if (!pointDechet.VolumeEstime.HasValue)
+            {
+                pointDechet.VolumeEstime = EstimerVolume(pointDechet.Type);
+            }
+
+            return new ContexteRecommandation
+            {
+                PointDechet = pointDechet,
+                NombreDechetsProches = dechetsProches,
+                HistoriqueNettoyages = historiqueNettoyages,
+                OrganisationLocaleActive = organisationActive,
+                Saison = saison
+            };
+        }
+
+        /// <summary>
+        /// Détermine la saison actuelle
+        /// </summary>
+        private string DeterminerSaison(DateTime date)
+        {
+            var mois = date.Month;
+            return mois switch
+            {
+                12 or 1 or 2 => "Hiver",
+                3 or 4 or 5 => "Printemps",
+                6 or 7 or 8 => "Été",
+                9 or 10 or 11 => "Automne",
+                _ => "Inconnue"
+            };
+        }
+
+        /// <summary>
+        /// Estime le volume d'un déchet en fonction de son type
+        /// </summary>
+        private double EstimerVolume(TypeDechet? type)
+        {
+            return type switch
+            {
+                TypeDechet.Plastique => 5.0,
+                TypeDechet.Verre => 10.0,
+                TypeDechet.Metale => 15.0,
+                TypeDechet.Pile => 2.0,
+                TypeDechet.Papier => 3.0,
+                TypeDechet.Autre => 7.0,
+                _ => 5.0
+            };
+        }
+
+        /// <summary>
+        /// Génère un message de succès personnalisé
+        /// </summary>
+        private string GenerateSuccessMessage(
+            PointDechet pointDechet, 
+            WasteClassificationResponse? classification, 
+            RecommandationEcologique? recommandation)
+        {
+            var messages = new List<string>();
+
+            if (pointDechet.Type.HasValue)
+            {
+                messages.Add($"Déchet classifié comme {pointDechet.Type}");
+            }
+            else
+            {
+                messages.Add("Déchet signalé (classification impossible)");
+            }
+
+            if (recommandation != null && recommandation.EstActive)
+            {
+                messages.Add($"Recommandation générée (urgence: {recommandation.Urgence})");
+            }
+
+            return string.Join(" et ", messages) + ".";
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetPointDechet(Guid id)
         {
-            var point = await _context.PointDechets.FindAsync(id);
+            var point = await _context.PointDechets
+                .Include(p => p.User)
+                .Include(p => p.Recommandations)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
             if (point == null)
                 return NotFound();
 
             return Ok(point);
+        }
+
+        /// <summary>
+        /// Récupère les recommandations pour un point de déchet spécifique
+        /// </summary>
+        [HttpGet("{id}/recommandations")]
+        public async Task<IActionResult> GetRecommandations(Guid id)
+        {
+            var recommandations = await _context.RecommandationsEcologiques
+                .Where(r => r.PointDechetId == id && r.EstActive)
+                .OrderByDescending(r => r.DateGeneration)
+                .ToListAsync();
+
+            if (!recommandations.Any())
+                return NotFound(new { message = "Aucune recommandation disponible pour ce déchet" });
+
+            return Ok(recommandations);
+        }
+
+        /// <summary>
+        /// Force la régénération d'une recommandation pour un point de déchet
+        /// </summary>
+        [HttpPost("{id}/regenerer-recommandation")]
+        public async Task<IActionResult> RegénérerRecommandation(Guid id)
+        {
+            try
+            {
+                var pointDechet = await _context.PointDechets.FindAsync(id);
+                if (pointDechet == null)
+                    return NotFound(new { message = "Point de déchet non trouvé" });
+
+                // Désactiver les anciennes recommandations
+                var anciennesRecommandations = await _context.RecommandationsEcologiques
+                    .Where(r => r.PointDechetId == id)
+                    .ToListAsync();
+
+                foreach (var ancienne in anciennesRecommandations)
+                {
+                    ancienne.EstActive = false;
+                }
+
+                // Générer une nouvelle recommandation
+                var contexte = await ConstruireContexteRecommandationAsync(pointDechet);
+                var nouvelleRecommandation = await _geminiAgent.GenererRecommandationAsync(contexte);
+
+                if (nouvelleRecommandation != null && nouvelleRecommandation.EstActive)
+                {
+                    _context.RecommandationsEcologiques.Add(nouvelleRecommandation);
+                    await _context.SaveChangesAsync();
+
+                    return Ok(new
+                    {
+                        message = "Recommandation régénérée avec succès",
+                        recommandation = nouvelleRecommandation
+                    });
+                }
+
+                return StatusCode(500, new { message = "Impossible de générer une nouvelle recommandation" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la régénération de recommandation pour {Id}", id);
+                return StatusCode(500, new { message = "Erreur serveur", details = ex.Message });
+            }
         }
 
         private async Task<WasteClassificationResponse?> ClassifyWasteAsync(Guid pointDechetId)
@@ -200,7 +433,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
             {
                 var client = _httpClientFactory.CreateClient();
 
-                // Construire l'URL de l'endpoint de classification
                 var baseUrl = $"{Request.Scheme}://{Request.Host}";
                 var classifyUrl = $"{baseUrl}/api/WasteClassification/classify";
 
@@ -245,7 +477,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
             }
         }
 
-        // Reverse Geocoding avec Nominatim (OpenStreetMap)
         private async Task<(string Zone, string Pays)> GetReverseGeocodingAsync(double latitude, double longitude)
         {
             using var httpClient = new HttpClient();
@@ -292,6 +523,8 @@ namespace MyEcologicCrowsourcingApp.Controllers
 
             return (zone ?? "Inconnue", pays ?? "Inconnu");
         }
+
+
 
         [HttpGet]
         [Authorize]

@@ -19,6 +19,7 @@ namespace MyEcologicCrowsourcingApp.Data
         public DbSet<Depot> Depots { get; set; }
         public DbSet<OptimisationRequest> OptimisationRequests { get; set; }
         public DbSet<OptimisationResult> OptimisationResults { get; set; }
+        public DbSet<RecommandationEcologique> RecommandationsEcologiques { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -27,10 +28,10 @@ namespace MyEcologicCrowsourcingApp.Data
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
-            
+
             modelBuilder.Entity<User>()
                 .HasOne(u => u.Organisation)
-                .WithMany(o => o.Users) 
+                .WithMany(o => o.Users)
                 .HasForeignKey(u => u.OrganisationId)
                 .OnDelete(DeleteBehavior.SetNull);
 
@@ -46,7 +47,7 @@ namespace MyEcologicCrowsourcingApp.Data
                 .HasForeignKey(p => p.NettoyeParOrganisationId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .IsRequired(false);
-            
+
             modelBuilder.Entity<Vehicule>()
                 .HasOne(v => v.Organisation)
                 .WithMany(o => o.Vehicules)
@@ -64,7 +65,7 @@ namespace MyEcologicCrowsourcingApp.Data
                 .WithMany(o => o.Itineraires)
                 .HasForeignKey(i => i.OrganisationId)
                 .OnDelete(DeleteBehavior.Restrict);
-                
+
 
             modelBuilder.Entity<OptimisationResult>()
                 .HasOne(or => or.OptimisationRequest)
@@ -74,7 +75,7 @@ namespace MyEcologicCrowsourcingApp.Data
 
             modelBuilder.Entity<Organisation>()
                 .HasOne(o => o.Representant)
-                .WithMany() 
+                .WithMany()
                 .HasForeignKey(o => o.RepresentantId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -153,6 +154,19 @@ namespace MyEcologicCrowsourcingApp.Data
                 .Property(d => d.Longitude)
                 .HasPrecision(10, 7);
 
+
+            modelBuilder.Entity<RecommandationEcologique>()
+                .HasOne(r => r.PointDechet)
+                .WithMany(p => p.Recommandations)
+                .HasForeignKey(r => r.PointDechetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RecommandationEcologique>()
+                .HasIndex(r => r.PointDechetId);
+
+            modelBuilder.Entity<RecommandationEcologique>()
+                .HasIndex(r => r.DateGeneration);
+                
 
 
             var dateTimeConverter = new ValueConverter<DateTime, DateTime>(

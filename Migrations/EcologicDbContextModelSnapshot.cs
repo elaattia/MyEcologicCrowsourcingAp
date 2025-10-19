@@ -250,6 +250,51 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.ToTable("PointDechets");
                 });
 
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.RecommandationEcologique", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActionRecommandee")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ContexteUtilise")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("DateGeneration")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("EstActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Justification")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("PointDechetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ScorePriorite")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Urgence")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DateGeneration");
+
+                    b.HasIndex("PointDechetId");
+
+                    b.ToTable("RecommandationsEcologiques");
+                });
+
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.User", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -407,6 +452,17 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.RecommandationEcologique", b =>
+                {
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.PointDechet", "PointDechet")
+                        .WithMany("Recommandations")
+                        .HasForeignKey("PointDechetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PointDechet");
+                });
+
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.User", b =>
                 {
                     b.HasOne("MyEcologicCrowsourcingApp.Models.Organisation", "Organisation")
@@ -442,6 +498,11 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.Navigation("Users");
 
                     b.Navigation("Vehicules");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.PointDechet", b =>
+                {
+                    b.Navigation("Recommandations");
                 });
 #pragma warning restore 612, 618
         }

@@ -8,7 +8,12 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="DotnetGeminiSDK" Version="2.0.0" />
+    <PackageReference Include="Google.Cloud.AIPlatform.V1" Version="3.8.0" />
     <PackageReference Include="Google.OrTools" Version="9.14.6206" />
+    <PackageReference Include="LangChain" Version="0.15.3" />
+    <PackageReference Include="LangChain.Core" Version="0.15.3" />
+    <PackageReference Include="LangChain.Providers.Google" Version="0.15.3" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -1,3 +1,4 @@
+using MyEcologicCrowsourcingApp.Models;
 namespace MyEcologicCrowsourcingApp.DTOs
 {
     public class StatistiquesRequest
@@ -6,7 +7,7 @@ namespace MyEcologicCrowsourcingApp.DTOs
         public DateTime? DateFin { get; set; }
         public string? Pays { get; set; }
         public string? Zone { get; set; }
-        public Guid? UserId { get; set; } 
+        public Guid? UserId { get; set; }
     }
 
     public class StatistiquesResponse
