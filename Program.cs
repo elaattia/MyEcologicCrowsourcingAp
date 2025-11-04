@@ -47,6 +47,19 @@ builder.Services.AddScoped<IVehiculeService, VehiculeService>();
 builder.Services.AddScoped<IDepotRepository, DepotRepository>();
 builder.Services.AddScoped<IDepotService, DepotService>();
 
+builder.Services.AddScoped<IForumCategoryRepository, ForumCategoryRepository>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddScoped<IPostReactionRepository, PostReactionRepository>();
+builder.Services.AddScoped<ICommentReactionRepository, CommentReactionRepository>();
+builder.Services.AddScoped<IPostReportRepository, PostReportRepository>();
+
+builder.Services.AddScoped<IForumCategoryService, ForumCategoryService>();
+builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<IReactionService, ReactionService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+
 builder.Services.AddHttpClient("Roboflow", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(30);
