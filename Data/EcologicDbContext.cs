@@ -28,6 +28,15 @@ namespace MyEcologicCrowsourcingApp.Data
         public DbSet<CommentReaction> CommentReactions { get; set; }
         public DbSet<PostReport> PostReports { get; set; }
 
+        public DbSet<Challenge> Challenges { get; set; }
+        public DbSet<UserChallenge> UserChallenges { get; set; }
+        public DbSet<ChallengeSubmission> ChallengeSubmissions { get; set; }
+        public DbSet<SubmissionVote> SubmissionVotes { get; set; }
+        public DbSet<UserStats> UserStats { get; set; }
+        public DbSet<Achievement> Achievements { get; set; }
+        public DbSet<UserAchievement> UserAchievements { get; set; }
+        public DbSet<ChallengeTemplate> ChallengeTemplates { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -299,6 +308,141 @@ namespace MyEcologicCrowsourcingApp.Data
 
             modelBuilder.Entity<PostReport>()
                 .HasIndex(pr => pr.CreatedAt);
+
+            modelBuilder.Entity<Challenge>()
+                .HasOne(c => c.CreatedBy)
+                .WithMany()
+                .HasForeignKey(c => c.CreatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Challenge>()
+                .Property(c => c.Title)
+                .HasMaxLength(200)
+                .IsRequired();
+
+            modelBuilder.Entity<Challenge>()
+                .HasIndex(c => c.Type);
+
+            modelBuilder.Entity<Challenge>()
+                .HasIndex(c => c.IsActive);
+
+            modelBuilder.Entity<Challenge>()
+                .HasIndex(c => c.StartDate);
+
+            modelBuilder.Entity<Challenge>()
+                .HasIndex(c => new { c.IsActive, c.Type, c.StartDate });
+
+            modelBuilder.Entity<UserChallenge>()
+                .HasOne(uc => uc.User)
+                .WithMany(u => u.UserChallenges)
+                .HasForeignKey(uc => uc.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserChallenge>()
+                .HasOne(uc => uc.Challenge)
+                .WithMany(c => c.UserChallenges)
+                .HasForeignKey(uc => uc.ChallengeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserChallenge>()
+                .HasIndex(uc => new { uc.UserId, uc.ChallengeId })
+                .IsUnique();
+
+            modelBuilder.Entity<UserChallenge>()
+                .HasIndex(uc => uc.IsCompleted);
+
+            modelBuilder.Entity<ChallengeSubmission>()
+                .HasOne(cs => cs.Challenge)
+                .WithMany(c => c.Submissions)
+                .HasForeignKey(cs => cs.ChallengeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ChallengeSubmission>()
+                .HasOne(cs => cs.User)
+                .WithMany(u => u.Submissions)
+                .HasForeignKey(cs => cs.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ChallengeSubmission>()
+                .HasOne(cs => cs.ReviewedBy)
+                .WithMany()
+                .HasForeignKey(cs => cs.ReviewedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<ChallengeSubmission>()
+                .HasIndex(cs => cs.Status);
+
+            modelBuilder.Entity<ChallengeSubmission>()
+                .HasIndex(cs => cs.SubmittedAt);
+
+            modelBuilder.Entity<ChallengeSubmission>()
+                .HasIndex(cs => new { cs.UserId, cs.ChallengeId });
+
+            modelBuilder.Entity<ChallengeSubmission>()
+                .Property(cs => cs.Latitude)
+                .HasPrecision(10, 7);
+
+            modelBuilder.Entity<ChallengeSubmission>()
+                .Property(cs => cs.Longitude)
+                .HasPrecision(10, 7);
+
+                modelBuilder.Entity<SubmissionVote>()
+                    .HasOne(sv => sv.Submission)
+                    .WithMany(s => s.Votes)
+                    .HasForeignKey(sv => sv.SubmissionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                modelBuilder.Entity<SubmissionVote>()
+                    .HasOne(sv => sv.User)
+                    .WithMany()
+                    .HasForeignKey(sv => sv.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                modelBuilder.Entity<SubmissionVote>()
+                    .HasIndex(sv => new { sv.SubmissionId, sv.UserId })
+                    .IsUnique();
+
+                modelBuilder.Entity<UserStats>()
+                    .HasOne(us => us.User)
+                    .WithOne(u => u.Stats)
+                    .HasForeignKey<UserStats>(us => us.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                modelBuilder.Entity<UserStats>()
+                    .HasIndex(us => us.TotalPoints);
+
+                modelBuilder.Entity<UserStats>()
+                    .HasIndex(us => us.GlobalRank);
+
+                modelBuilder.Entity<Achievement>()
+                    .Property(a => a.Name)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                modelBuilder.Entity<Achievement>()
+                    .HasIndex(a => a.IsActive);
+
+                modelBuilder.Entity<UserAchievement>()
+                    .HasOne(ua => ua.User)
+                    .WithMany(u => u.Achievements)
+                    .HasForeignKey(ua => ua.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                modelBuilder.Entity<UserAchievement>()
+                    .HasOne(ua => ua.Achievement)
+                    .WithMany(a => a.UserAchievements)
+                    .HasForeignKey(ua => ua.AchievementId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                modelBuilder.Entity<UserAchievement>()
+                    .HasIndex(ua => new { ua.UserId, ua.AchievementId })
+                    .IsUnique();
+
+                modelBuilder.Entity<ChallengeTemplate>()
+                    .HasIndex(ct => ct.Type);
+
+                modelBuilder.Entity<ChallengeTemplate>()
+                    .HasIndex(ct => ct.IsActive);
 
 
             var dateTimeConverter = new ValueConverter<DateTime, DateTime>(
