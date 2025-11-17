@@ -1,6 +1,7 @@
 using Google.OrTools.ConstraintSolver;
 using MyEcologicCrowsourcingApp.Models;
 using System.Text.Json;
+using System.Globalization;
 
 namespace MyEcologicCrowsourcingApp.Services
 {
@@ -8,7 +9,7 @@ namespace MyEcologicCrowsourcingApp.Services
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<VRPOptimisationService> _logger;
-        private const string OSRM_BASE_URL = "http://localhost:5008"; // Votre OSRM local
+        private const string OSRM_BASE_URL = "https://router.project-osrm.org";
 
         public VRPOptimisationService(
             IHttpClientFactory httpClientFactory,
@@ -26,21 +27,70 @@ namespace MyEcologicCrowsourcingApp.Services
             _logger.LogInformation("Début optimisation: {Count} points, {Vehicles} véhicules",
                 pointsDechets.Count, vehicules.Count);
 
+            // VÉRIFIER LA FAISABILITÉ
+            var volumeTotal = pointsDechets.Sum(p => p.VolumeEstime ?? 5.0);
+            var capaciteTotal = vehicules.Sum(v => v.CapaciteMax);
+            
+            _logger.LogInformation("Volume total: {Volume} m³, Capacité totale: {Capacite} m³", 
+                volumeTotal, capaciteTotal);
+
+            // Si capacité insuffisante, créer des véhicules virtuels (multi-tournées)
+            var vehiculesOptimises = vehicules.ToList();
+            if (volumeTotal > capaciteTotal)
+            {
+                _logger.LogWarning("Capacité insuffisante! Activation du mode multi-tournées");
+                vehiculesOptimises = CreerVehiculesVirtuels(vehicules, volumeTotal);
+            }
+
             // ÉTAPE 1: Obtenir la matrice de distances réelles via OSRM
             var distanceMatrix = await GetDistanceMatrixFromOSRM(pointsDechets, depot);
 
             // ÉTAPE 2: Résoudre le VRP avec OR-Tools
             var solution = SolveVRPWithORTools(
                 pointsDechets,
-                vehicules,
+                vehiculesOptimises,
                 distanceMatrix,
                 depot);
 
             // ÉTAPE 3: Enrichir avec les routes détaillées OSRM
-            var itineraires = await EnrichWithOSRMRoutes(solution, pointsDechets, depot);
+            var itineraires = await EnrichWithOSRMRoutes(solution, pointsDechets, depot, vehicules);
 
             _logger.LogInformation("Optimisation terminée: {Count} itinéraires créés", itineraires.Count);
             return itineraires;
+        }
+
+        /// <summary>
+        /// Crée des véhicules virtuels pour permettre les multi-tournées
+        /// </summary>
+        private List<Vehicule> CreerVehiculesVirtuels(List<Vehicule> vehiculesReels, double volumeTotal)
+        {
+            var vehiculesVirtuels = new List<Vehicule>();
+            
+            foreach (var vehicule in vehiculesReels)
+            {
+                // Calculer combien de tournées sont nécessaires
+                int nombreTournees = (int)Math.Ceiling(volumeTotal / vehicule.CapaciteMax);
+                
+                _logger.LogInformation("Véhicule {Immat}: {NbTournees} tournées nécessaires", 
+                    vehicule.Immatriculation, nombreTournees);
+
+                // Créer un véhicule virtuel par tournée
+                for (int i = 0; i < nombreTournees; i++)
+                {
+                    vehiculesVirtuels.Add(new Vehicule
+                    {
+                        Id = vehicule.Id,
+                        Immatriculation = $"{vehicule.Immatriculation} (Tournée {i + 1})",
+                        Type = vehicule.Type,
+                        CapaciteMax = vehicule.CapaciteMax,
+                        EstDisponible = true,
+                        OrganisationId = vehicule.OrganisationId
+                    });
+                }
+            }
+
+            _logger.LogInformation("Véhicules virtuels créés: {Count}", vehiculesVirtuels.Count);
+            return vehiculesVirtuels;
         }
 
         private async Task<long[,]> GetDistanceMatrixFromOSRM(
@@ -49,55 +99,63 @@ namespace MyEcologicCrowsourcingApp.Services
         {
             _logger.LogInformation("Calcul matrice de distances via OSRM...");
 
-            // Construire la liste de coordonnées (depot + tous les points)
             var coordinates = new List<string>
             {
-                $"{depot.Longitude},{depot.Latitude}" // Index 0 = dépôt
+                $"{depot.Longitude.ToString("F6", CultureInfo.InvariantCulture)},{depot.Latitude.ToString("F6", CultureInfo.InvariantCulture)}"
             };
 
             foreach (var point in points)
             {
-                coordinates.Add($"{point.Longitude},{point.Latitude}");
+                coordinates.Add($"{point.Longitude.ToString("F6", CultureInfo.InvariantCulture)},{point.Latitude.ToString("F6", CultureInfo.InvariantCulture)}");
             }
 
-            // Appel OSRM Table API
             var coordinatesString = string.Join(";", coordinates);
             var url = $"{OSRM_BASE_URL}/table/v1/driving/{coordinatesString}?annotations=distance,duration";
 
-            var client = _httpClientFactory.CreateClient();
-            var response = await client.GetAsync(url);
+            _logger.LogInformation("URL OSRM: {Url}", url);
 
-            if (!response.IsSuccessStatusCode)
+            var client = _httpClientFactory.CreateClient();
+            
+            try
             {
-                _logger.LogWarning("OSRM non disponible, utilisation distances Haversine");
+                var response = await client.GetAsync(url);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("OSRM non disponible (Code: {StatusCode}), utilisation distances Haversine", response.StatusCode);
+                    return CalculateHaversineMatrix(points, depot);
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                var osrmResponse = JsonSerializer.Deserialize<OSRMTableResponse>(json);
+
+                if (osrmResponse?.distances == null)
+                {
+                    _logger.LogWarning("Réponse OSRM invalide, utilisation distances Haversine");
+                    return CalculateHaversineMatrix(points, depot);
+                }
+
+                int size = points.Count + 1;
+                var matrix = new long[size, size];
+
+                for (int i = 0; i < size; i++)
+                {
+                    for (int j = 0; j < size; j++)
+                    {
+                        matrix[i, j] = (long)osrmResponse.distances[i][j];
+                    }
+                }
+
+                _logger.LogInformation("Matrice de distances calculée: {Size}x{Size}", size, size);
+                return matrix;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Erreur OSRM, utilisation distances Haversine");
                 return CalculateHaversineMatrix(points, depot);
             }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var osrmResponse = JsonSerializer.Deserialize<OSRMTableResponse>(json);
-
-            if (osrmResponse?.distances == null)
-            {
-                throw new InvalidOperationException("La réponse OSRM est invalide ou ne contient pas de distances.");
-            }
-
-            // Convertir en matrice OR-Tools (distances en mètres)
-            int size = points.Count + 1;
-            var matrix = new long[size, size];
-
-            for (int i = 0; i < size; i++)
-            {
-                for (int j = 0; j < size; j++)
-                {
-                    matrix[i, j] = (long)osrmResponse.distances[i][j];
-                }
-            }
-
-            _logger.LogInformation("Matrice de distances calculée: {Size}x{Size}", size, size);
-            return matrix;
         }
 
-        // calcule la distance la plus courte entre deux points sur une sphère 
         private long[,] CalculateHaversineMatrix(List<PointDechet> points, Location depot)
         {
             int size = points.Count + 1;
@@ -118,7 +176,7 @@ namespace MyEcologicCrowsourcingApp.Services
                     var lat2 = j == 0 ? depot.Latitude : points[j - 1].Latitude;
                     var lon2 = j == 0 ? depot.Longitude : points[j - 1].Longitude;
 
-                    matrix[i, j] = (long)(HaversineDistance(lat1, lon1, lat2, lon2) * 1000); // en mètres
+                    matrix[i, j] = (long)(HaversineDistance(lat1, lon1, lat2, lon2) * 1000);
                 }
             }
 
@@ -127,7 +185,7 @@ namespace MyEcologicCrowsourcingApp.Services
 
         private double HaversineDistance(double lat1, double lon1, double lat2, double lon2)
         {
-            const double R = 6371; // km
+            const double R = 6371;
             var dLat = ToRadians(lat2 - lat1);
             var dLon = ToRadians(lon2 - lon1);
             var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
@@ -147,22 +205,17 @@ namespace MyEcologicCrowsourcingApp.Services
         {
             _logger.LogInformation("Résolution VRP avec OR-Tools...");
 
-            int numLocations = points.Count + 1; // +1 pour le dépôt
+            int numLocations = points.Count + 1;
             int numVehicles = vehicules.Count;
             int depotIndex = 0;
 
-            // Créer le RoutingIndexManager
-            // PARAMÈTRE: nombre de locations, nombre de véhicules, index du dépôt
             RoutingIndexManager manager = new RoutingIndexManager(
                 numLocations,
                 numVehicles,
                 depotIndex);
 
-            // Créer le modèle de routage
             RoutingModel routing = new RoutingModel(manager);
 
-            // CALLBACK DE DISTANCE
-            // Définit comment calculer la distance entre deux points
             int transitCallbackIndex = routing.RegisterTransitCallback((long fromIndex, long toIndex) =>
             {
                 var fromNode = manager.IndexToNode(fromIndex);
@@ -170,62 +223,59 @@ namespace MyEcologicCrowsourcingApp.Services
                 return distanceMatrix[fromNode, toNode];
             });
 
-            // Définir le coût de l'arc (distance)
             routing.SetArcCostEvaluatorOfAllVehicles(transitCallbackIndex);
 
-            // CONTRAINTE DE CAPACITÉ
-            // Chaque véhicule a une capacité maximale (en m³)
             int demandCallbackIndex = routing.RegisterUnaryTransitCallback((long fromIndex) =>
             {
                 var fromNode = manager.IndexToNode(fromIndex);
-                if (fromNode == 0) return 0; // Dépôt = pas de demande
-                return (long)((points[fromNode - 1].VolumeEstime ?? 1.0) * 1000); // Convertir en litres
+                if (fromNode == 0) return 0;
+                
+                var volume = points[fromNode - 1].VolumeEstime ?? 5.0;
+                return (long)(volume * 1000);
             });
+
+            // Capacités réelles (pas augmentées pour forcer la solution)
+            var capacites = vehicules.Select(v => (long)(v.CapaciteMax * 1000)).ToArray();
 
             routing.AddDimensionWithVehicleCapacity(
                 demandCallbackIndex,
-                0, // slack (pas de marge)
-                vehicules.Select(v => (long)(v.CapaciteMax * 1000)).ToArray(), // Capacités en litres
-                true, // start_cumul_to_zero
+                0,
+                capacites,
+                true,
                 "Capacity");
 
-            // CONTRAINTE DE DISTANCE MAXIMALE (optionnel)
-            // Limite la distance totale par véhicule
             routing.AddDimension(
                 transitCallbackIndex,
-                0, // pas de temps d'attente
-                100000000, // distance max par véhicule (100 000 km en mètres)
+                0,
+                200000000,
                 true,
                 "Distance");
 
-            // PARAMÈTRES DE RECHERCHE
             RoutingSearchParameters searchParameters = operations_research_constraint_solver.DefaultRoutingSearchParameters();
-
-            // STRATÉGIE DE PREMIÈRE SOLUTION
-            // PATH_CHEAPEST_ARC = commence par les arcs les moins coûteux
+            
             searchParameters.FirstSolutionStrategy = FirstSolutionStrategy.Types.Value.PathCheapestArc;
-
-            // MÉTAHEURISTIQUE DE RECHERCHE LOCALE
-            // GUIDED_LOCAL_SEARCH = algorithme performant pour améliorer la solution
             searchParameters.LocalSearchMetaheuristic = LocalSearchMetaheuristic.Types.Value.GuidedLocalSearch;
+            searchParameters.TimeLimit = new Google.Protobuf.WellKnownTypes.Duration { Seconds = 30 };
 
-            // LIMITE DE TEMPS (5 secondes)
-            searchParameters.TimeLimit = new Google.Protobuf.WellKnownTypes.Duration { Seconds = 5 };
+            _logger.LogInformation("Lancement recherche de solution... ({NumPoints} points, {NumVehicles} véhicules)", 
+                points.Count, numVehicles);
 
-            _logger.LogInformation("Lancement recherche de solution...");
-
-            // RÉSOUDRE
             Assignment solution = routing.SolveWithParameters(searchParameters);
 
             if (solution == null)
             {
+                var volumeTotal = points.Sum(p => p.VolumeEstime ?? 5.0);
+                var capaciteTotal = vehicules.Sum(v => v.CapaciteMax);
+                
                 _logger.LogError("Aucune solution trouvée!");
-                throw new Exception("Impossible de trouver une solution VRP");
+                _logger.LogError("Volume total demandes: {VolumeTotal} m³, Capacité totale: {CapaciteTotal} m³", 
+                    volumeTotal, capaciteTotal);
+                
+                throw new Exception($"Impossible de trouver une solution VRP. Volume demandé ({volumeTotal:F2} m³) vs Capacité disponible ({capaciteTotal:F2} m³). Ajoutez plus de véhicules ou activez le mode multi-tournées.");
             }
 
             _logger.LogInformation("Solution trouvée! Coût total: {Cost} mètres", solution.ObjectiveValue());
 
-            // EXTRAIRE LA SOLUTION
             var vrpSolution = new VRPSolution
             {
                 TotalDistance = solution.ObjectiveValue(),
@@ -253,14 +303,12 @@ namespace MyEcologicCrowsourcingApp.Services
                     route.Distance += routing.GetArcCostForVehicle(previousIndex, index, vehicleId);
                 }
 
-                // Ajouter le retour au dépôt
                 route.PointIndices.Add(manager.IndexToNode(index));
 
-                // N'ajouter que les routes non vides
-                if (route.PointIndices.Count > 2) // Plus que dépôt départ et retour
-                {
-                    vrpSolution.Routes.Add(route);
-                }
+                vrpSolution.Routes.Add(route);
+                
+                _logger.LogInformation("Route véhicule {VehicleId}: {PointCount} points, {Distance} m", 
+                    vehicleId, route.PointIndices.Count - 2, route.Distance);
             }
 
             return vrpSolution;
@@ -269,72 +317,88 @@ namespace MyEcologicCrowsourcingApp.Services
         private async Task<List<Itineraire>> EnrichWithOSRMRoutes(
             VRPSolution solution,
             List<PointDechet> points,
-            Location depot)
+            Location depot,
+            List<Vehicule> vehiculesReels)
         {
             _logger.LogInformation("Enrichissement avec routes OSRM détaillées...");
 
             var itineraires = new List<Itineraire>();
             var client = _httpClientFactory.CreateClient();
 
-            foreach (var route in solution.Routes)
+            // Grouper les routes par véhicule réel
+            var routesParVehicule = solution.Routes
+                .Select((route, index) => new { route, index })
+                .GroupBy(x => x.index % vehiculesReels.Count)
+                .ToList();
+
+            int numeroTournee = 1;
+
+            foreach (var groupe in routesParVehicule)
             {
-                var itineraire = new Itineraire
+                var vehiculeReel = vehiculesReels[groupe.Key];
+
+                foreach (var routeInfo in groupe)
                 {
-                    Id = Guid.NewGuid(),
-                    ListePoints = new List<PointDechet>(),
-                    DistanceTotale = 0,
-                    DureeEstimee = TimeSpan.Zero,
-                    CarburantEstime = 0
-                };
+                    var route = routeInfo.route;
+                    
+                    // Ignorer les routes vides
+                    if (route.PointIndices.Count <= 2) continue;
 
-                // Construire la liste des coordonnées pour cette route
-                var coordinates = new List<string>();
-
-                foreach (var nodeIndex in route.PointIndices)
-                {
-                    if (nodeIndex == 0)
+                    var itineraire = new Itineraire
                     {
-                        coordinates.Add($"{depot.Longitude},{depot.Latitude}");
-                    }
-                    else
+                        Id = Guid.NewGuid(),
+                        ListePoints = new List<PointDechet>(),
+                        DistanceTotale = 0,
+                        DureeEstimee = TimeSpan.Zero,
+                        CarburantEstime = 0
+                    };
+
+                    var coordinates = new List<string>();
+
+                    foreach (var nodeIndex in route.PointIndices)
                     {
-                        var point = points[nodeIndex - 1];
-                        coordinates.Add($"{point.Longitude},{point.Latitude}");
-                        itineraire.ListePoints.Add(point);
-                    }
-                }
-
-                // Obtenir la route détaillée via OSRM
-                var coordinatesString = string.Join(";", coordinates);
-                var url = $"{OSRM_BASE_URL}/route/v1/driving/{coordinatesString}?overview=full&geometries=geojson&steps=true";
-
-                try
-                {
-                    var response = await client.GetAsync(url);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var json = await response.Content.ReadAsStringAsync();
-                        var osrmRoute = JsonSerializer.Deserialize<OSRMRouteResponse>(json);
-
-                        if (osrmRoute?.routes?.Length > 0)
+                        if (nodeIndex == 0)
                         {
-                            var routeData = osrmRoute.routes[0];
-                            itineraire.DistanceTotale = routeData.distance / 1000.0; // Convertir en km
-                            itineraire.DureeEstimee = TimeSpan.FromSeconds(routeData.duration);
-
-                            // Estimer carburant (8L/100km pour camion moyen)
-                            itineraire.CarburantEstime = (itineraire.DistanceTotale / 100.0) * 8.0;
+                            coordinates.Add($"{depot.Longitude.ToString("F6", CultureInfo.InvariantCulture)},{depot.Latitude.ToString("F6", CultureInfo.InvariantCulture)}");
+                        }
+                        else
+                        {
+                            var point = points[nodeIndex - 1];
+                            coordinates.Add($"{point.Longitude.ToString("F6", CultureInfo.InvariantCulture)},{point.Latitude.ToString("F6", CultureInfo.InvariantCulture)}");
+                            itineraire.ListePoints.Add(point);
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Erreur récupération route OSRM, utilisation estimation");
-                    itineraire.DistanceTotale = route.Distance / 1000.0; // Distance en km
-                    itineraire.DureeEstimee = TimeSpan.FromMinutes(itineraire.DistanceTotale * 2); // ~30 km/h moyenne
-                }
 
-                itineraires.Add(itineraire);
+                    var coordinatesString = string.Join(";", coordinates);
+                    var url = $"{OSRM_BASE_URL}/route/v1/driving/{coordinatesString}?overview=full&geometries=geojson&steps=true";
+
+                    try
+                    {
+                        var response = await client.GetAsync(url);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var json = await response.Content.ReadAsStringAsync();
+                            var osrmRoute = JsonSerializer.Deserialize<OSRMRouteResponse>(json);
+
+                            if (osrmRoute?.routes?.Length > 0)
+                            {
+                                var routeData = osrmRoute.routes[0];
+                                itineraire.DistanceTotale = routeData.distance / 1000.0;
+                                itineraire.DureeEstimee = TimeSpan.FromSeconds(routeData.duration);
+                                itineraire.CarburantEstime = (itineraire.DistanceTotale / 100.0) * 8.0;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Erreur récupération route OSRM, utilisation estimation");
+                        itineraire.DistanceTotale = route.Distance / 1000.0;
+                        itineraire.DureeEstimee = TimeSpan.FromMinutes(itineraire.DistanceTotale * 2);
+                    }
+
+                    itineraires.Add(itineraire);
+                    numeroTournee++;
+                }
             }
 
             return itineraires;

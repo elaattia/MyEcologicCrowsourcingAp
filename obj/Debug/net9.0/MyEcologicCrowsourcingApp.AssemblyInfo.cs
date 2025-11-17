@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MyEcologicCrowsourcingApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a2b86c973b9c78458fb82b66f9412eae8cf354ad")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+87a7ef2ce55a99b002da41c625c517b6dbcee137")]
 [assembly: System.Reflection.AssemblyProductAttribute("MyEcologicCrowsourcingApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MyEcologicCrowsourcingApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
