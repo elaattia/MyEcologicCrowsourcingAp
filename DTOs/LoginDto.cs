@@ -19,6 +19,7 @@ namespace MyEcologicCrowsourcingApp.DTOs
         public string Email { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
         public UserRole Role { get; set; }
+        public Guid? OrganisationId { get; set; }
         public string Token { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
     }

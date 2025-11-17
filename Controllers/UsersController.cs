@@ -90,6 +90,7 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 Email = user.Email,
                 Username = user.Username,
                 Role = user.Role,
+                OrganisationId = user.OrganisationId, 
                 Token = token,  
                 Message = "Connexion réussie"
             };
