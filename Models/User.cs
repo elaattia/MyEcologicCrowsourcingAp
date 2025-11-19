@@ -27,5 +27,17 @@ namespace MyEcologicCrowsourcingApp.Models
         
         public Guid? OrganisationId { get; set; }  
         public Organisation? Organisation { get; set; }
+
+        [JsonIgnore]
+        public UserStats? Stats { get; set; }
+
+        [JsonIgnore]
+        public ICollection<UserChallenge> UserChallenges { get; set; } = new List<UserChallenge>();
+
+        [JsonIgnore]
+        public ICollection<ChallengeSubmission> Submissions { get; set; } = new List<ChallengeSubmission>();
+
+        [JsonIgnore]
+        public ICollection<UserAchievement> Achievements { get; set; } = new List<UserAchievement>();
     }
 }

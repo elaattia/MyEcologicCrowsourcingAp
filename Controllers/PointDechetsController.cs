@@ -650,7 +650,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 var totalCount = await query.CountAsync();
                 var totalPages = (int)Math.Ceiling(totalCount / (double)filter.PageSize);
 
-                // Pagination
                 var items = await query
                     .Skip((filter.Page - 1) * filter.PageSize)
                     .Take(filter.PageSize)

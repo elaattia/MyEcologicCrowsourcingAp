@@ -47,6 +47,39 @@ builder.Services.AddScoped<IVehiculeService, VehiculeService>();
 builder.Services.AddScoped<IDepotRepository, DepotRepository>();
 builder.Services.AddScoped<IDepotService, DepotService>();
 
+builder.Services.AddScoped<IForumCategoryRepository, ForumCategoryRepository>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddScoped<IPostReactionRepository, PostReactionRepository>();
+builder.Services.AddScoped<ICommentReactionRepository, CommentReactionRepository>();
+builder.Services.AddScoped<IPostReportRepository, PostReportRepository>();
+
+builder.Services.AddScoped<IForumCategoryService, ForumCategoryService>();
+builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<IReactionService, ReactionService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+
+
+builder.Services.AddScoped<IChallengeService, ChallengeService>();
+builder.Services.AddScoped<IGeminiAIService, GeminiAIService>();
+
+builder.Services.AddScoped<IAchievementRepository, AchievementRepository>();
+builder.Services.AddScoped<IChallengeRepository, ChallengeRepository>();
+builder.Services.AddScoped<IChallengeSubmissionRepository, ChallengeSubmissionRepository>();
+builder.Services.AddScoped<IChallengeTemplateRepository, ChallengeTemplateRepository>();
+builder.Services.AddScoped<ISubmissionVoteRepository, SubmissionVoteRepository>();
+builder.Services.AddScoped<IUserAchievementRepository, UserAchievementRepository>();
+builder.Services.AddScoped<IUserChallengeRepository, UserChallengeRepository>();
+builder.Services.AddScoped<IUserStatsRepository, UserStatsRepository>();
+
+builder.Services.AddScoped<ISubmissionService, SubmissionService>();
+builder.Services.AddScoped<IChallengeSubmissionRepository, ChallengeSubmissionRepository>();
+builder.Services.AddScoped<ISubmissionVoteRepository, SubmissionVoteRepository>();
+
+builder.Services.AddScoped<IUserStatsService, UserStatsService>();
+builder.Services.AddScoped<IAchievementService, AchievementService>();
+
 builder.Services.AddHttpClient("Roboflow", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(30);

@@ -54,9 +54,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
             _env = env;
         }
 
-        /// <summary>
-        /// Classifie un déchet déjà signalé par son ID et met à jour le type dans la base de données
-        /// </summary>
         [HttpPost("classify")]
         [ProducesResponseType(typeof(WasteClassificationResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -105,7 +102,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
                 WasteClassificationResponse result;
                 bool usedCache = false;
 
-                // Vérifier le cache ET la validité du résultat en cache
                 if (_cache.TryGetValue<WasteClassificationResponse>(cacheKey, out var cachedResult) && 
                     cachedResult != null && 
                     IsValidCachedResult(cachedResult))
@@ -121,17 +117,15 @@ namespace MyEcologicCrowsourcingApp.Controllers
                     {
                         _logger.LogWarning("Résultat en cache INVALIDE (confidence: {Confidence}), appel à l'API Roboflow", 
                             cachedResult.Confidence);
-                        _cache.Remove(cacheKey); // Nettoyer le cache invalide
+                        _cache.Remove(cacheKey); 
                     }
 
-                    // Appeler l'API Roboflow
                     _logger.LogInformation("Appel à l'API Roboflow pour classification");
                     var roboflowResponse = await CallRoboflowAPI(imageBytes, "image/jpeg");
                     
                     result = MapToWasteCategories(roboflowResponse);
                     result.FromCache = false;
 
-                    // Mettre en cache SEULEMENT si le résultat est valide
                     if (IsValidCachedResult(result))
                     {
                         var cacheOptions = new MemoryCacheEntryOptions()
@@ -147,7 +141,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
                     }
                 }
 
-                // Mettre à jour le type de déchet UNIQUEMENT si la classification est valide
                 if (result.Success && 
                     !string.IsNullOrEmpty(result.Category) && 
                     result.Confidence > MIN_VALID_CONFIDENCE)
@@ -188,9 +181,6 @@ namespace MyEcologicCrowsourcingApp.Controllers
             }
         }
 
-        /// <summary>
-        /// Vérifie si un résultat en cache est valide (pas vide, pas d'erreur, confidence suffisante)
-        /// </summary>
         private bool IsValidCachedResult(WasteClassificationResponse cachedResult)
         {
             return cachedResult.Success && 

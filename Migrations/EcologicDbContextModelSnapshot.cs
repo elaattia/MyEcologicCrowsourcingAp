@@ -23,6 +23,355 @@ namespace MyEcologicCrowsourcingApp.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Achievement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("ChallengesRequired")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Criteria")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("PointsRequired")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SpecificType")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("Achievements");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Challenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AIGeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AIPromptUsed")
+                        .HasColumnType("text");
+
+                    b.Property<int>("BonusPoints")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CurrentParticipants")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Difficulty")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DurationDays")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Frequency")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Icon")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsAIGenerated")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsFeatured")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("MaxParticipants")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MaxSubmissionsPerUser")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Points")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RequiredProofType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Tips")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("VerificationCriteria")
+                        .HasColumnType("text");
+
+                    b.Property<int>("VerificationMethod")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("StartDate");
+
+                    b.HasIndex("Type");
+
+                    b.HasIndex("IsActive", "Type", "StartDate");
+
+                    b.ToTable("Challenges");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.ChallengeSubmission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double?>("AIConfidenceScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("AIVerificationResult")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("AIVerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("IsAIVerified")
+                        .HasColumnType("boolean");
+
+                    b.Property<double?>("Latitude")
+                        .HasPrecision(10, 7)
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("text");
+
+                    b.Property<double?>("Longitude")
+                        .HasPrecision(10, 7)
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PointsAwarded")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ProofType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProofUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReviewNotes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChallengeId");
+
+                    b.HasIndex("ReviewedByUserId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SubmittedAt");
+
+                    b.HasIndex("UserId", "ChallengeId");
+
+                    b.ToTable("ChallengeSubmissions");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.ChallengeTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AIPromptTemplate")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MaxPoints")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MinPoints")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("VerificationCriteriaTemplate")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Type");
+
+                    b.ToTable("ChallengeTemplates");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Comment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsEdited")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("ParentCommentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ParentCommentId");
+
+                    b.HasIndex("PostId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Comments");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.CommentReaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CommentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("CommentId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("CommentReactions");
+                });
+
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Depot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -58,6 +407,46 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.HasIndex("OrganisationId", "EstActif");
 
                     b.ToTable("Depots");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.ForumCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Icon")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("ForumCategories");
                 });
 
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Itineraire", b =>
@@ -250,6 +639,150 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.ToTable("PointDechets");
                 });
 
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Post", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPinned")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastActivityAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VideoUrl")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("IsPinned");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("CategoryId", "IsPinned", "CreatedAt");
+
+                    b.ToTable("Posts");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.PostReaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("PostId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("PostReactions");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.PostReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdminNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Reason")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ReportedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("PostId");
+
+                    b.HasIndex("ReportedByUserId");
+
+                    b.HasIndex("ReviewedByUserId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("PostReports");
+                });
+
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.RecommandationEcologique", b =>
                 {
                     b.Property<Guid>("Id")
@@ -295,6 +828,38 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.ToTable("RecommandationsEcologiques");
                 });
 
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.SubmissionVote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsValid")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("VotedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("SubmissionId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("SubmissionVotes");
+                });
+
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.User", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -329,6 +894,139 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.HasIndex("OrganisationId");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.UserAchievement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AchievementId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UnlockedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AchievementId");
+
+                    b.HasIndex("UserId", "AchievementId")
+                        .IsUnique();
+
+                    b.ToTable("UserAchievements");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.UserChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChallengeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("PointsEarned")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SubmissionCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChallengeId");
+
+                    b.HasIndex("IsCompleted");
+
+                    b.HasIndex("UserId", "ChallengeId")
+                        .IsUnique();
+
+                    b.ToTable("UserChallenges");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.UserStats", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ChallengesCompleted")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ChallengesInProgress")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CurrentStreak")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("GlobalRank")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IdentificationChallenges")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("LastChallengeCompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LitterPickupChallenges")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LongestStreak")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MonthlyRank")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlantingChallenges")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RecyclingChallenges")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SubmissionsApproved")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SubmissionsRejected")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalPoints")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("WeeklyRank")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GlobalRank");
+
+                    b.HasIndex("TotalPoints");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserStats");
                 });
 
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Vehicule", b =>
@@ -368,6 +1066,87 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.HasIndex("OrganisationId", "EstDisponible");
 
                     b.ToTable("Vehicules");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Challenge", b =>
+                {
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CreatedBy");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.ChallengeSubmission", b =>
+                {
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.Challenge", "Challenge")
+                        .WithMany("Submissions")
+                        .HasForeignKey("ChallengeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "ReviewedBy")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "User")
+                        .WithMany("Submissions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Challenge");
+
+                    b.Navigation("ReviewedBy");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Comment", b =>
+                {
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.Comment", "ParentComment")
+                        .WithMany("Replies")
+                        .HasForeignKey("ParentCommentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.Post", "Post")
+                        .WithMany("Comments")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ParentComment");
+
+                    b.Navigation("Post");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.CommentReaction", b =>
+                {
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.Comment", "Comment")
+                        .WithMany("Reactions")
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Comment");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Depot", b =>
@@ -452,6 +1231,70 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Post", b =>
+                {
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.ForumCategory", "Category")
+                        .WithMany("Posts")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.PostReaction", b =>
+                {
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.Post", "Post")
+                        .WithMany("Reactions")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.PostReport", b =>
+                {
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.Post", "Post")
+                        .WithMany("Reports")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "ReportedBy")
+                        .WithMany()
+                        .HasForeignKey("ReportedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "ReviewedBy")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Post");
+
+                    b.Navigation("ReportedBy");
+
+                    b.Navigation("ReviewedBy");
+                });
+
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.RecommandationEcologique", b =>
                 {
                     b.HasOne("MyEcologicCrowsourcingApp.Models.PointDechet", "PointDechet")
@@ -461,6 +1304,25 @@ namespace MyEcologicCrowsourcingApp.Migrations
                         .IsRequired();
 
                     b.Navigation("PointDechet");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.SubmissionVote", b =>
+                {
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.ChallengeSubmission", "Submission")
+                        .WithMany("Votes")
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Submission");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.User", b =>
@@ -473,6 +1335,55 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.Navigation("Organisation");
                 });
 
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.UserAchievement", b =>
+                {
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.Achievement", "Achievement")
+                        .WithMany("UserAchievements")
+                        .HasForeignKey("AchievementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "User")
+                        .WithMany("Achievements")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Achievement");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.UserChallenge", b =>
+                {
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.Challenge", "Challenge")
+                        .WithMany("UserChallenges")
+                        .HasForeignKey("ChallengeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "User")
+                        .WithMany("UserChallenges")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Challenge");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.UserStats", b =>
+                {
+                    b.HasOne("MyEcologicCrowsourcingApp.Models.User", "User")
+                        .WithOne("Stats")
+                        .HasForeignKey("MyEcologicCrowsourcingApp.Models.UserStats", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Vehicule", b =>
                 {
                     b.HasOne("MyEcologicCrowsourcingApp.Models.Organisation", "Organisation")
@@ -482,6 +1393,35 @@ namespace MyEcologicCrowsourcingApp.Migrations
                         .IsRequired();
 
                     b.Navigation("Organisation");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Achievement", b =>
+                {
+                    b.Navigation("UserAchievements");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Challenge", b =>
+                {
+                    b.Navigation("Submissions");
+
+                    b.Navigation("UserChallenges");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.ChallengeSubmission", b =>
+                {
+                    b.Navigation("Votes");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Comment", b =>
+                {
+                    b.Navigation("Reactions");
+
+                    b.Navigation("Replies");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.ForumCategory", b =>
+                {
+                    b.Navigation("Posts");
                 });
 
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Itineraire", b =>
@@ -503,6 +1443,26 @@ namespace MyEcologicCrowsourcingApp.Migrations
             modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.PointDechet", b =>
                 {
                     b.Navigation("Recommandations");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.Post", b =>
+                {
+                    b.Navigation("Comments");
+
+                    b.Navigation("Reactions");
+
+                    b.Navigation("Reports");
+                });
+
+            modelBuilder.Entity("MyEcologicCrowsourcingApp.Models.User", b =>
+                {
+                    b.Navigation("Achievements");
+
+                    b.Navigation("Stats");
+
+                    b.Navigation("Submissions");
+
+                    b.Navigation("UserChallenges");
                 });
 #pragma warning restore 612, 618
         }
