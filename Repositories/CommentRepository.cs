@@ -24,9 +24,13 @@ namespace MyEcologicCrowsourcingApp.Repositories
             return await _context.Comments
                 .Include(c => c.User)
                 .Include(c => c.Reactions)
-                .Include(c => c.Replies)
+                .Include(c => c.Replies)                    // ✅ Charger les réponses
                     .ThenInclude(r => r.User)
-                .Where(c => c.PostId == postId && c.ParentCommentId == null)
+                .Include(c => c.Replies)
+                    .ThenInclude(r => r.Reactions)
+                .Include(c => c.Replies)                    // ✅ Réponses de niveau 2
+                    .ThenInclude(r => r.Replies)
+                .Where(c => c.PostId == postId)
                 .OrderBy(c => c.CreatedAt)
                 .ToListAsync();
         }

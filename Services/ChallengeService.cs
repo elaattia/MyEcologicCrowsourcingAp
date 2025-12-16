@@ -136,63 +136,112 @@ namespace MyEcologicCrowsourcingApp.Services
             return MapToDto(created);
         }
 
+        // 🔧 CORRECTION CRITIQUE: Bien sauvegarder le challenge généré par IA
         public async Task<ChallengeDto> GenerateAIChallengeAsync(
             GenerateChallengeRequestDto request, Guid creatorUserId)
         {
-            var aiResult = await _geminiService.GenerateChallengeAsync(request);
-
-            var createDto = new CreateChallengeDto
+            try
             {
-                Title = aiResult.Title,
-                Description = aiResult.Description,
-                Type = request.Type ?? ChallengeType.Recycling,
-                Difficulty = request.Difficulty ?? ChallengeDifficulty.Medium,
-                Frequency = request.Frequency ?? ChallengeFrequency.OneTime,
-                Points = aiResult.SuggestedPoints,
-                Tips = aiResult.Tips,
-                Tags = aiResult.Tags,
-                VerificationCriteria = aiResult.VerificationCriteria,
-                RequiredProofType = "Photo",
-                DurationDays = 7,
-                VerificationMethod = VerificationMethod.Hybrid
-            };
+                // 1. Générer le contenu avec Gemini
+                Console.WriteLine($"🤖 Génération IA - Theme: {request.Theme}, Type: {request.Type}");
+                var aiResult = await _geminiService.GenerateChallengeAsync(request);
+                Console.WriteLine($"✅ IA a généré: {aiResult.Title}");
 
-            var challenge = await CreateChallengeAsync(createDto, creatorUserId);
-            
-            var entity = await _challengeRepo.GetByIdAsync(challenge.Id);
-            if (entity != null)
-            {
-                entity.IsAIGenerated = true;
-                entity.AIGeneratedAt = DateTime.UtcNow;
-                entity.AIPromptUsed = $"Type: {request.Type}, Difficulty: {request.Difficulty}, Theme: {request.Theme}";
-                await _challengeRepo.UpdateAsync(entity);
+                // 2. Créer l'entité Challenge
+                var challenge = new Challenge
+                {
+                    Id = Guid.NewGuid(),
+                    Title = aiResult.Title,
+                    Description = aiResult.Description,
+                    Type = request.Type ?? ChallengeType.Recycling,
+                    Difficulty = request.Difficulty ?? ChallengeDifficulty.Medium,
+                    Frequency = request.Frequency ?? ChallengeFrequency.OneTime,
+                    Points = aiResult.SuggestedPoints,
+                    BonusPoints = 0,
+                    Tips = aiResult.Tips,
+                    Tags = aiResult.Tags != null ? string.Join(",", aiResult.Tags) : null,
+                    VerificationCriteria = aiResult.VerificationCriteria,
+                    RequiredProofType = "Photo",
+                    StartDate = DateTime.UtcNow,
+                    DurationDays = 7,
+                    VerificationMethod = VerificationMethod.Hybrid,
+                    IsActive = true,
+                    IsFeatured = false,
+                    CurrentParticipants = 0,
+                    // ✅ Marquer comme généré par IA
+                    IsAIGenerated = true,
+                    AIGeneratedAt = DateTime.UtcNow,
+                    AIPromptUsed = $"Type: {request.Type}, Difficulty: {request.Difficulty}, Theme: {request.Theme}",
+                    CreatedByUserId = creatorUserId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                if (challenge.DurationDays > 0)
+                {
+                    challenge.EndDate = challenge.StartDate.AddDays(challenge.DurationDays);
+                }
+
+                // 3. ✅ SAUVEGARDER EN BASE DE DONNÉES
+                Console.WriteLine($"💾 Sauvegarde du challenge: {challenge.Id}");
+                var created = await _challengeRepo.CreateAsync(challenge);
+                Console.WriteLine($"✅ Challenge sauvegardé avec succès!");
+
+                // 4. Retourner le DTO
+                return MapToDto(created);
             }
-
-            return challenge;
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Erreur génération IA: {ex.Message}");
+                throw;
+            }
         }
 
+        // 🔧 CORRECTION: Générer plusieurs challenges et tous les sauvegarder
         public async Task<List<ChallengeDto>> GenerateMultipleAIChallengesAsync(
             GenerateChallengeRequestDto request, Guid creatorUserId)
         {
             var results = new List<ChallengeDto>();
+            var count = Math.Min(request.Count, 10); // Limiter à 10 max
             
-            for (int i = 0; i < request.Count; i++)
+            Console.WriteLine($"🤖 Génération de {count} challenges en lot...");
+            
+            for (int i = 0; i < count; i++)
             {
                 try
                 {
-                    var challenge = await GenerateAIChallengeAsync(request, creatorUserId);
+                    Console.WriteLine($"📝 Génération challenge {i + 1}/{count}");
+                    
+                    // Varier les paramètres pour plus de diversité
+                    var variedRequest = new GenerateChallengeRequestDto
+                    {
+                        Type = request.Type,
+                        Difficulty = request.Difficulty,
+                        Frequency = request.Frequency,
+                        Theme = request.Theme,
+                        Count = 1
+                    };
+
+                    // ✅ Utiliser la méthode qui sauvegarde déjà
+                    var challenge = await GenerateAIChallengeAsync(variedRequest, creatorUserId);
                     results.Add(challenge);
                     
-                    // Rate limiting delay
-                    if (i < request.Count - 1)
+                    Console.WriteLine($"✅ Challenge {i + 1}/{count} créé: {challenge.Title}");
+                    
+                    // Rate limiting pour ne pas surcharger l'API Gemini
+                    if (i < count - 1)
+                    {
+                        Console.WriteLine($"⏳ Attente 1.5s avant le prochain...");
                         await Task.Delay(1500);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to generate challenge {i + 1}: {ex.Message}");
+                    Console.WriteLine($"❌ Échec challenge {i + 1}: {ex.Message}");
+                    // Continuer même si un challenge échoue
                 }
             }
 
+            Console.WriteLine($"✅ Génération terminée: {results.Count}/{count} challenges créés");
             return results;
         }
 

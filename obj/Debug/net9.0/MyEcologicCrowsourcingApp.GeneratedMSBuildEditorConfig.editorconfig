@@ -17,57 +17,57 @@ build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = MyEcologicCrowsourcingApp
 build_property.RootNamespace = MyEcologicCrowsourcingApp
-build_property.ProjectDir = C:\Users\noura\Downloads\projet dotnet cours\MyEcologicCrowsourcingApp\
+build_property.ProjectDir = C:\Users\HP\Desktop\projetDotnet\back\MyEcologicCrowsourcingAp\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 9.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = C:\Users\noura\Downloads\projet dotnet cours\MyEcologicCrowsourcingApp
+build_property.MSBuildProjectDirectory = C:\Users\HP\Desktop\projetDotnet\back\MyEcologicCrowsourcingAp
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 9.0
 build_property.EnableCodeStyleSeverity = 
 
-[C:/Users/noura/Downloads/projet dotnet cours/MyEcologicCrowsourcingApp/Views/Account/Login.cshtml]
+[C:/Users/HP/Desktop/projetDotnet/back/MyEcologicCrowsourcingAp/Views/Account/Login.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxMb2dpbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/noura/Downloads/projet dotnet cours/MyEcologicCrowsourcingApp/Views/Home/Index.cshtml]
+[C:/Users/HP/Desktop/projetDotnet/back/MyEcologicCrowsourcingAp/Views/Home/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/noura/Downloads/projet dotnet cours/MyEcologicCrowsourcingApp/Views/Home/Privacy.cshtml]
+[C:/Users/HP/Desktop/projetDotnet/back/MyEcologicCrowsourcingAp/Views/Home/Privacy.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxQcml2YWN5LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/noura/Downloads/projet dotnet cours/MyEcologicCrowsourcingApp/Views/Pages/SignalerDechet.cshtml]
+[C:/Users/HP/Desktop/projetDotnet/back/MyEcologicCrowsourcingAp/Views/Pages/SignalerDechet.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUGFnZXNcU2lnbmFsZXJEZWNoZXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/noura/Downloads/projet dotnet cours/MyEcologicCrowsourcingApp/Views/Shared/Error.cshtml]
+[C:/Users/HP/Desktop/projetDotnet/back/MyEcologicCrowsourcingAp/Views/Shared/Error.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXEVycm9yLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/noura/Downloads/projet dotnet cours/MyEcologicCrowsourcingApp/Views/Shared/_ValidationScriptsPartial.cshtml]
+[C:/Users/HP/Desktop/projetDotnet/back/MyEcologicCrowsourcingAp/Views/Shared/_ValidationScriptsPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/noura/Downloads/projet dotnet cours/MyEcologicCrowsourcingApp/Views/Upload/Index.cshtml]
+[C:/Users/HP/Desktop/projetDotnet/back/MyEcologicCrowsourcingAp/Views/Upload/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXBsb2FkXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/noura/Downloads/projet dotnet cours/MyEcologicCrowsourcingApp/Views/Upload/Welcome.cshtml]
+[C:/Users/HP/Desktop/projetDotnet/back/MyEcologicCrowsourcingAp/Views/Upload/Welcome.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXBsb2FkXFdlbGNvbWUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/noura/Downloads/projet dotnet cours/MyEcologicCrowsourcingApp/Views/_ViewImports.cshtml]
+[C:/Users/HP/Desktop/projetDotnet/back/MyEcologicCrowsourcingAp/Views/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/noura/Downloads/projet dotnet cours/MyEcologicCrowsourcingApp/Views/_ViewStart.cshtml]
+[C:/Users/HP/Desktop/projetDotnet/back/MyEcologicCrowsourcingAp/Views/_ViewStart.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/noura/Downloads/projet dotnet cours/MyEcologicCrowsourcingApp/Views/Shared/_Layout.cshtml]
+[C:/Users/HP/Desktop/projetDotnet/back/MyEcologicCrowsourcingAp/Views/Shared/_Layout.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = b-9jxxx96hcj

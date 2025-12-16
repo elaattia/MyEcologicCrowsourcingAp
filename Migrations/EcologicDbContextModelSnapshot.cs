@@ -504,7 +504,7 @@ namespace MyEcologicCrowsourcingApp.Migrations
                     b.Property<Guid>("OrganisationId")
                         .HasColumnType("uuid");
 
-                    b.Property<TimeSpan>("TempsMaxParTrajet")
+                    b.Property<TimeSpan?>("TempsMaxParTrajet")
                         .HasColumnType("interval");
 
                     b.Property<string>("ZoneGeographique")

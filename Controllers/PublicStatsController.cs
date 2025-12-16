@@ -34,7 +34,11 @@ namespace MyEcologicCrowsourcingApp.Controllers
 
                 // Total des zones nettoyées (déchets avec statut "Nettoyé")
                 var totalZonesNettoyees = await _context.PointDechets
-                    .Where(p => p.Statut == StatutDechet.Nettoye)
+                    .Where(p => 
+                        p.Statut == StatutDechet.Nettoye ||      // Si enum
+                        p.Statut.ToString() == "Nettoye" ||       // Si string
+                        (int)p.Statut == 1                        // Si int
+                    )
                     .CountAsync();
 
                 // Total des contributeurs actifs (tous les utilisateurs)
